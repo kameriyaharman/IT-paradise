@@ -29,7 +29,7 @@ app.use(async (req, res, next) => {
   try {
     const s = await getSettings();
     const host = req.get('host');
-    if (!s.public_url && host && !/localhost|127\.0\.0\.1/.test(host)) await setSetting('public_url', `${req.protocol}://${host}`);
+    if (!process.env.PUBLIC_URL && !s.public_url && host && !/localhost|127\.0\.0\.1|healthcheck|railway\.internal/.test(host)) await setSetting('public_url', `https://${host}`);
   } catch (e) { /* ignore */ }
   next();
 });

@@ -6,7 +6,7 @@ const { addActivity } = require('./leads');
 
 const isOn = async (key) => { const a = await one('SELECT enabled FROM automations WHERE key=$1', [key]); return !a || a.enabled; };
 const bump = (key) => q('UPDATE automations SET runs=runs+1,last_run=now() WHERE key=$1', [key]);
-const baseUrl = async () => (await getSettings()).public_url || process.env.PUBLIC_URL || '';
+const baseUrl = async () => { const u = (await getSettings()).public_url; return (u && !/healthcheck|localhost/.test(u) ? u : '') || process.env.PUBLIC_URL || ''; };
 const inr = (n) => '₹' + Math.round(Number(n || 0)).toLocaleString('en-IN');
 
 function computeTotals(items, discount = 0) {
