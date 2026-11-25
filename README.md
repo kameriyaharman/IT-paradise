@@ -75,3 +75,5 @@ mobile/                Android (Capacitor) project
 ## Deploy (Railway)
 Service `web` deploys from this repo (start: `node server.js`, healthcheck `/health`), Postgres plugin provides `DATABASE_URL`.
 Custom domain: Railway → web → Settings → Networking → add `itparadise.in` / `crm.itparadise.in`, then update `mobile/capacitor.config.json` and push to rebuild the APK.
+
+Staff Android app download: `/download/app` (also GitHub Release `apk-latest`).
