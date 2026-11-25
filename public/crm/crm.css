@@ -123,3 +123,8 @@ body.mobile .qsum{margin-top:12px}body.mobile .tbl th,body.mobile .tbl td{paddin
 body.mobile .board{grid-template-columns:repeat(7,80vw)}
 
 .ph .row input,.row input[type=date]{width:auto}.qitems td:first-child{min-width:240px}.qitems select{width:72px}.qitems td:first-child input{width:100%}
+/* consistent button sizing & alignment in tables / rows */
+.btn{vertical-align:middle;line-height:1.2;min-height:38px;box-sizing:border-box}.btn.sm{min-height:32px;height:32px;padding:0 12px}.btn.sm:not(:has(span,svg+*)) {}
+.tbl td.nowrap{white-space:nowrap}.tbl td.nowrap>.btn,.tbl td.nowrap>a.btn{margin:2px 0}
+.b-pri,.b-green,.b-wa,.b-navy{background-size:200% 100%;transition:background-position .5s,transform .15s,box-shadow .2s}.b-pri:hover,.b-green:hover,.b-wa:hover,.b-navy:hover{background-position:100% 0;transform:translateY(-1px)}
+.b-green{background-image:linear-gradient(120deg,#22C55E,#16A34A,#15803D,#22C55E)}.b-wa{background-image:linear-gradient(120deg,#3BE07A,#22C55E,#128C7E,#3BE07A)}.b-navy{background-image:linear-gradient(120deg,#2A4F96,#132C5C,#0B1F44,#2A4F96)}.b-pri{background-image:linear-gradient(120deg,#3EC1FF,#1E9BE0,#1565C0,#3EC1FF)}

@@ -1,5 +1,5 @@
 <%- include('partials/header') %>
-<section class="hero"><div class="wrap hero-in">
+<section class="hero"><div class="hero-bg" aria-hidden="true"><i></i><i></i><i></i><b></b></div><div class="wrap hero-in">
   <div class="hero-copy">
     <div class="eyebrow light">YOUR TECHNOLOGY. OUR EXPERTISE.</div>
     <h1>Technology.<br><span>Integrated.</span></h1>
@@ -16,11 +16,40 @@
       <div><b><%= s.stat_sectors || '6' %></b><span>Sectors served</span></div>
     </div>
   </div>
-  <div class="hero-tiles">
-    <a href="/products/business-computing" class="htile"><%- art('laptop') %><span>Business computing</span></a>
-    <a href="/products/video-surveillance" class="htile"><%- art('dome') %><span>CCTV &amp; security</span></a>
-    <a href="/products/enterprise-networking" class="htile"><%- art('ap') %><span>Networking &amp; Wi-Fi</span></a>
-    <a href="/products/access-attendance" class="htile"><%- art('attendance') %><span>Attendance &amp; access</span></a>
+  <div class="lap-stage" aria-hidden="true">
+    <div class="lap-glow"></div>
+    <div class="lap">
+      <div class="lap-lid">
+        <div class="lap-bezel"><i class="cam"></i>
+          <div class="lap-screen">
+            <div class="boot">
+              <img src="/static/img/logo.svg" width="56" height="56" alt="">
+              <b>IT PARADISE</b><small>TECHNOLOGY. INTEGRATED.</small>
+              <div class="bootbar"><i></i></div>
+            </div>
+            <div class="desk">
+              <div class="d-top"><span class="dots"><i></i><i></i><i></i></span><span class="d-url">itparadise.in · Business OS</span><span class="d-live">● LIVE</span></div>
+              <div class="d-body">
+                <div class="d-kpis"><div><small>Leads today</small><b data-to="23">0</b></div><div><small>Sales</small><b>₹<span data-to="32">0</span>L</b></div><div><small>Installs</small><b data-to="14">0</b></div></div>
+                <div class="d-row">
+                  <div class="d-cams"><% ['Gate','Office','Lab','Parking'].forEach((c,i)=>{ %><div class="cam-f f<%= i %>"><span>CAM <%= i+1 %> · <%= c %></span><em></em></div><% }) %></div>
+                  <div class="d-chart"><% [40,62,48,80,66,92].forEach((h,i)=>{ %><i style="--h:<%= h %>%;--d:<%= i %>"></i><% }) %></div>
+                </div>
+                <div class="d-type"><span>Technology. Integrated.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="lap-base"><div class="kbd"></div><div class="pad"></div></div>
+      <div class="lap-lip"></div>
+      <div class="lap-shadow"></div>
+    </div>
+    <a href="/products/video-surveillance" class="orb o1"><%- icon('camera', 18) %><span>CCTV</span></a>
+    <a href="/products/enterprise-networking" class="orb o2"><%- icon('wifi', 18) %><span>Wi-Fi</span></a>
+    <a href="/products/access-attendance" class="orb o3"><%- icon('fingerprint', 18) %><span>Attendance</span></a>
+    <a href="/products/power-backup" class="orb o4"><%- icon('bolt', 18) %><span>UPS</span></a>
+    <a href="/products/print-display" class="orb o5"><%- icon('printer', 18) %><span>Print</span></a>
   </div>
 </div></section>
 

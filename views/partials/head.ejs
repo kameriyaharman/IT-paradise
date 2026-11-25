@@ -14,7 +14,7 @@
 <link rel="icon" href="/static/img/logo.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/css/site.css?v=3">
+<link rel="stylesheet" href="/static/css/site.css?v=4">
 <% if (s.ga_id) { %><script async src="https://www.googletagmanager.com/gtag/js?id=<%= s.ga_id %>"></script>
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}gtag('js',new Date());gtag('config','<%= s.ga_id %>');</script><% } %>
 <script type="application/ld+json"><%- JSON.stringify({"@context":"https://schema.org","@type":"LocalBusiness","name":s.company_name||"IT PARADISE","foundingDate":"2006","address":{"@type":"PostalAddress","addressLocality":"Bhilwara","addressRegion":"Rajasthan","addressCountry":"IN","streetAddress":s.address||""},"telephone":s.phone_sales||undefined,"email":s.email||undefined,"url":s.public_url||undefined,"openingHours":"Mo-Sa 10:00-20:00"}) %></script>

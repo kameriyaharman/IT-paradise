@@ -72,3 +72,36 @@
   $$('[data-cookie]').forEach(b => b.addEventListener('click', (e) => { e.preventDefault(); $('.cookie').hidden = false; }));
   if (location.hash === '#quote' && !$('#quote')) open('enquiry');
 })();
+(function () {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // Header shadow
+  const hdr = document.querySelector('.hdr');
+  const onScroll = () => hdr && hdr.classList.toggle('scrolled', scrollY > 10);
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  // Scroll reveal with stagger
+  const sel = '.cat,.pcard,.sector,.steps>div,.pkg,.sup,.sec-head,.h2,.eyebrow.center,.quote-blk>*,.assess,.values>div,.nums>div,.brand,.fbt,.tabs,.contact,.gal figure,.ftr-grid>div,.banner';
+  const els = [...document.querySelectorAll(sel)].filter(e => !e.closest('.hero') && !e.closest('.modal'));
+  els.forEach(e => { const sib = [...e.parentElement.children].filter(x => x.matches(sel)); e.style.setProperty('--rd', Math.min(sib.indexOf(e), 8) * 0.07 + 's'); e.classList.add('rv'); });
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver((es) => es.forEach(en => { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } }), { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }) : null;
+  els.forEach(e => io ? io.observe(e) : e.classList.add('in'));
+  const steps = document.querySelector('.steps');
+  if (steps && io) new IntersectionObserver((es, o) => es.forEach(en => { if (en.isIntersecting) { steps.classList.add('in-line'); o.disconnect(); } }), { threshold: .3 }).observe(steps);
+  // Count-up numbers
+  const count = (el, to, dur, fmt) => { if (reduce) { el.textContent = fmt(to); return; } const t0 = performance.now(); const step = (t) => { const p = Math.min(1, (t - t0) / dur); el.textContent = fmt(Math.round(to * (1 - Math.pow(1 - p, 3)))); if (p < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); };
+  document.querySelectorAll('.stats b').forEach((b, i) => {
+    const raw = b.textContent.trim(); const m = raw.match(/^([\d,]+)(.*)$/); if (!m) return;
+    const n = +m[1].replace(/,/g, ''); const yr = n > 1900 && n < 2100;
+    setTimeout(() => count(b, n, yr ? 1200 : 1600, (v) => (yr ? v : v.toLocaleString('en-IN')) + m[2]), 700 + i * 120);
+  });
+  // Laptop screen counters after boot
+  setTimeout(() => document.querySelectorAll('.desk [data-to]').forEach(e => count(e, +e.dataset.to, 1300, v => v)), reduce ? 0 : 4100);
+  // Subtle 3D tilt of the laptop with the mouse
+  const stage = document.querySelector('.lap-stage'), lap = stage && stage.querySelector('.lap');
+  if (stage && !reduce && matchMedia('(pointer:fine)').matches) {
+    setTimeout(() => {
+      lap.style.animation = 'none'; lap.style.transition = 'transform .4s ease-out';
+      stage.addEventListener('mousemove', (e) => { const r = stage.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; lap.style.transform = `rotateY(${x * 10}deg) rotateX(${-y * 6}deg)`; });
+      stage.addEventListener('mouseleave', () => { lap.style.transform = ''; });
+    }, 2600);
+  }
+})();
