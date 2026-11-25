@@ -20,7 +20,7 @@
 <div class="mbar">
   <a href="tel:<%= s.phone_sales || '' %>"><%- icon('phone', 18) %> Call</a>
   <a href="https://wa.me/<%= waNum %>" class="wa" target="_blank" rel="noopener"><%- icon('wa', 18) %> WhatsApp</a>
-  <a href="#" class="q" data-open="enquiry" data-form="Get quote (mobile bar)"><%- icon('quote', 18) %> Get quote</a>
+  <a href="/quote" class="q"><%- icon('cart', 18) %> Quote <i class="qc-n" hidden>0</i></a>
 </div>
 
 <!-- Enquiry popup -->
@@ -56,5 +56,5 @@
   </form>
 </div>
 <div class="cookie" hidden><span>We use essential cookies only, plus analytics if you allow.</span><button class="btn btn-sm btn-primary" data-cookie-ok>OK</button></div>
-<script src="/static/js/site.js?v=4" defer></script>
+<script src="/static/js/site.js?v=6" defer></script>
 </body></html>

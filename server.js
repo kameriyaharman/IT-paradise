@@ -41,7 +41,7 @@ app.get(['/download/app', '/download/ITParadise.apk'], (req, res) => {
   res.download(f, 'ITParadise.apk');
 });
 app.get('/health', (req, res) => res.json({ ok: true }));
-app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '7d' }));
+app.use('/static', express.static(path.join(__dirname, 'public'), { maxAge: '7d', setHeaders: (res, f) => { if (/[\\/]crm[\\/]/.test(f)) res.setHeader('Cache-Control', 'no-cache'); } }));
 app.use('/vendor/preact', express.static(path.join(__dirname, 'node_modules/preact/dist'), { maxAge: '30d' }));
 app.use('/vendor/hooks', express.static(path.join(__dirname, 'node_modules/preact/hooks/dist'), { maxAge: '30d' }));
 app.use('/vendor/qr', express.static(path.join(__dirname, 'node_modules/html5-qrcode'), { maxAge: '30d' }));
@@ -62,7 +62,7 @@ app.use('/api', require('./src/routes/api'));
 
 // CRM (desktop) and staff app (mobile) — same SPA, layout switches by path
 const spa = (req, res) => res.sendFile(path.join(__dirname, 'public/crm/index.html'));
-app.get(['/crm', '/crm/*splat', '/app', '/app/*splat'], spa);
+app.get(['/crm', '/crm/*splat', '/app', '/app/*splat', '/admin', '/admin/*splat'], spa);
 
 app.use('/', require('./src/routes/site'));
 

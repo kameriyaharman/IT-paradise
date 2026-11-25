@@ -105,6 +105,11 @@ r.post('/settings/test-whatsapp', h(async (req, res) => {
   res.json(await sendWhatsApp(req.body.phone, req.body.template ? { template: req.body.template } : { text: req.body.text || 'Test message from IT Paradise CRM ✅' }, { userId: req.user.id }));
 }));
 
+r.get('/enquiries', h(async (req, res) => {
+  const rows = await q(`SELECT l.id,l.name,l.phone,l.need,l.stage,l.source_detail,l.created_at,u.name owner FROM leads l LEFT JOIN users u ON u.id=l.owner_id WHERE l.source='website' ORDER BY l.id DESC LIMIT 200`);
+  const k = await one(`SELECT count(*)::int week, count(*) FILTER (WHERE source_detail ILIKE 'Quote list%')::int quotes FROM leads WHERE source='website' AND created_at > now()-interval '7 days'`);
+  res.json({ rows, ...k });
+}));
 r.post('/clear-demo', h(async (req, res) => { await require('../seed').clearDemo(); await audit(req, 'clear', 'demo_data'); res.json({ ok: true }); }));
 
 module.exports = r;

@@ -10,20 +10,20 @@ export function Website({ tab = 'products', id }) {
     <${Tabs} tabs=${T} cur=${tab} onChange=${(t) => go('/website/' + t)}/>
     <div class="mt">${tab === 'products' ? (id ? html`<${ProductEdit} id=${id}/>` : html`<${ProductList}/>`) : tab === 'pages' ? html`<${Pages}/>` : html`<${Simple} t=${tab}/>`}</div></div>`;
 }
-function ProductList() {
+export function ProductList() {
   const q = useApi('/api/cms/products'); const [s, setS] = useState(''); const [imp, setImp] = useState(false);
-  return html`<div><div class="row between"><${Search} value=${s} onInput=${setS} ph="Search products"/><div class="row gap"><${Btn} kind="ghost" onClick=${() => setImp(true)}>Bulk import (CSV)</${Btn}><a class="btn b-pri" href="#/website/products/new"><${Ic} n="plus" s=${16}/> Add product</a></div></div>
+  return html`<div><div class="row between"><${Search} value=${s} onInput=${setS} ph="Search products"/><div class="row gap"><${Btn} kind="ghost" onClick=${() => setImp(true)}>Bulk import (CSV)</${Btn}><a class="btn b-pri" href="#/products/new"><${Ic} n="plus" s=${16}/> Add product</a></div></div>
   <${Load} q=${q}>${(rows) => html`<div class="card mt"><table class="tbl"><thead><tr><th></th><th>Product</th><th>Category</th><th>Price</th><th>MRP</th><th>Stock</th><th>Best seller</th><th>Status</th></tr></thead><tbody>
-    ${rows.filter(p => !s || p.name.toLowerCase().includes(s.toLowerCase()) || (p.sku || '').toLowerCase().includes(s.toLowerCase())).map(p => html`<tr class="click" onClick=${() => go('/website/products/' + p.id)}>
+    ${rows.filter(p => !s || p.name.toLowerCase().includes(s.toLowerCase()) || (p.sku || '').toLowerCase().includes(s.toLowerCase())).map(p => html`<tr class="click" onClick=${() => go('/products/' + p.id)}>
       <td class="thumb">${p.image_ids && p.image_ids.length ? html`<img src=${'/media/' + p.image_ids[0]}/>` : html`<span class="muted small">${p.art}</span>`}</td><td><b>${p.name}</b><small>${p.sku || ''}</small></td><td>${p.category}</td><td>${+p.price ? inr(p.price) : 'On request'}</td><td>${inr(p.mrp)}</td><td>${p.stock}</td><td>${p.best_seller ? '★' : ''}</td><td><${Badge} s=${p.published ? 'active' : 'cancelled'}>${p.published ? 'Published' : 'Hidden'}<//></td></tr>`)}</tbody></table></div>`}<//>
   ${imp && html`<${Modal} title="Bulk import products" onClose=${() => setImp(false)}><p class="muted small">CSV columns: <code>name,category_slug,price,mrp,buy_price,sku,stock,min_stock,highlights,description</code> (highlights separated by |). Existing products (same name/SKU) are updated.</p>
     <input type="file" accept=".csv,text/csv" onChange=${async (e) => { const txt = await e.target.files[0].text(); const r = await run(() => fetch('/api/cms/products/import', { method: 'POST', headers: { Authorization: 'Bearer ' + auth.token, 'Content-Type': 'text/plain' }, body: txt }).then(r => r.json())); toast(`Imported ${r.imported} products`); setImp(false); q.reload(); }}/><//>`}</div>`;
 }
-function ProductEdit({ id }) {
+export function ProductEdit({ id }) {
   const isNew = id === 'new'; const cats = useApi('/api/cms/categories'); const brands = useApi('/api/cms/brands'); const all = useApi('/api/cms/products');
   const [v, bind, setV] = useForm({ published: true, serial_tracked: true, gst_rate: 18, warranty_months: 12, art: 'dome', specs: [], faq: [], highlights: [], image_ids: [], related: [] });
   useEffect(() => { if (!isNew) api('/api/cms/products/' + id).then(p => setV({ ...p, highlights: (p.highlights || []).join('\n') })); }, [id]);
-  const save = async () => { const body = { ...v, highlights: String(v.highlights || '').split('\n') }; const p = await run(() => isNew ? api('/api/cms/products', { body }) : put('/api/cms/products/' + id, body), 'Product saved'); if (isNew) go('/website/products/' + p.id); };
+  const save = async () => { const body = { ...v, highlights: String(v.highlights || '').split('\n') }; const p = await run(() => isNew ? api('/api/cms/products', { body }) : put('/api/cms/products/' + id, body), 'Product saved'); if (isNew) go('/products/' + p.id); };
   const setSpec = (i, k, val) => setV(s => ({ ...s, specs: s.specs.map((x, j) => j === i ? { ...x, [k]: val } : x) }));
   const setFaq = (i, k, val) => setV(s => ({ ...s, faq: s.faq.map((x, j) => j === i ? { ...x, [k]: val } : x) }));
   return html`<div class="g2c wide-l"><div class="col-stack">
@@ -47,7 +47,7 @@ function ProductEdit({ id }) {
       <p class="muted small">First image is the main photo. Without photos, the built-in illustration is used:</p><select ...${bind('art')}>${ARTS.map(a => html`<option>${a}</option>`)}</select></div>
     <div class="card pad"><h3>SEO</h3><${F} l="Meta title"><input ...${bind('meta_title')}/></${F}><${F} l="Meta description"><textarea rows="3" ...${bind('meta_desc')}></textarea></${F}></div>
     <div class="card pad"><h3>Frequently bought together</h3><select multiple size="6" onChange=${(e) => setV(x => ({ ...x, related: [...e.target.selectedOptions].map(o => +o.value) }))}>${(all.data || []).filter(p => p.id !== +id).map(p => html`<option value=${p.id} selected=${(v.related || []).includes(p.id)}>${p.name}</option>`)}</select><small class="muted">Ctrl/Cmd-click to select multiple</small></div>
-    <div class="row gap"><${Btn} onClick=${save}>Save product</${Btn}>${!isNew && html`<a class="btn b-ghost" target="_blank" href=${'/product/' + v.slug}>View</a><${Btn} kind="ghost" icon="trash" onClick=${async () => { if (confirm('Delete product? (If used in orders it will be hidden instead.)')) { await run(() => del('/api/cms/products/' + id), 'Done'); go('/website/products'); } }}>Delete</${Btn}>`}</div>
+    <div class="row gap"><${Btn} onClick=${save}>Save product</${Btn}>${!isNew && html`<a class="btn b-ghost" target="_blank" href=${'/product/' + v.slug}>View</a><${Btn} kind="ghost" icon="trash" onClick=${async () => { if (confirm('Delete product? (If used in orders it will be hidden instead.)')) { await run(() => del('/api/cms/products/' + id), 'Done'); go('/products'); } }}>Delete</${Btn}>`}</div>
   </div></div>`;
 }
 const SIMPLE = {
@@ -57,7 +57,7 @@ const SIMPLE = {
   banners: [['title', 'Title'], ['subtitle', 'Subtitle'], ['image_id', 'Image', 'img'], ['link', 'Link URL'], ['active', 'Active', 'check'], ['sort', 'Order']],
   gallery: [['image_id', 'Photo', 'img'], ['caption', 'Caption'], ['sort', 'Order']],
 };
-function Simple({ t }) {
+export function Simple({ t }) {
   const q = useApi('/api/cms/' + t, [t]); const [ed, setEd] = useState(null); const cols = SIMPLE[t];
   return html`<div><div class="row between"><span class="muted">Changes appear on the website instantly.</span><${Btn} icon="plus" onClick=${() => setEd({ active: true, packages: [] })}>Add</${Btn}></div>
   <${Load} q=${q}>${(rows) => html`<div class="card mt"><table class="tbl"><thead><tr>${cols.filter(c => c[2] !== 'pkgs' && c[2] !== 'area').map(c => html`<th>${c[1]}</th>`)}<th></th></tr></thead><tbody>
@@ -74,7 +74,7 @@ function SimpleEdit({ t, cols, r, onClose, onDone }) {
       : ty === 'pkgs' ? html`<div class="full"><b>${l}</b>${v.packages.map((p, i) => html`<div class="row gap"><input value=${p.t} placeholder="Title" onInput=${(e) => setV(s => ({ ...s, packages: s.packages.map((x, j) => j === i ? { ...x, t: e.target.value } : x) }))}/><input class="grow" value=${p.d} placeholder="Description" onInput=${(e) => setV(s => ({ ...s, packages: s.packages.map((x, j) => j === i ? { ...x, d: e.target.value } : x) }))}/><select value=${p.art} onChange=${(e) => setV(s => ({ ...s, packages: s.packages.map((x, j) => j === i ? { ...x, art: e.target.value } : x) }))}>${ARTS.map(a => html`<option>${a}</option>`)}</select><button class="icbtn" onClick=${() => setV(s => ({ ...s, packages: s.packages.filter((_, j) => j !== i) }))}><${Ic} n="x" s=${14}/></button></div>`)}<${Btn} sm kind="ghost" icon="plus" onClick=${() => setV(s => ({ ...s, packages: [...s.packages, { t: '', d: '', art: 'dome' }] }))}>Add package</${Btn}></div>`
       : html`<${F} l=${l}><input ...${bind(k)}/></${F}>`)}</div><//>`;
 }
-function Pages() {
+export function Pages() {
   const q = useApi('/api/cms/pages'); const [ed, setEd] = useState(null);
   return html`<div><div class="row between"><span class="muted">About-us text, stats and contact details are in Settings → Company.</span><${Btn} icon="plus" onClick=${() => setEd({ slug: '' })}>New page</${Btn}></div>
   <${Load} q=${q}>${(rows) => html`<div class="card mt"><table class="tbl"><thead><tr><th>Page</th><th>URL</th><th>Updated</th><th></th></tr></thead><tbody>${rows.map(p => html`<tr><td><b>${p.title}</b></td><td><a href=${'/page/' + p.slug} target="_blank">/page/${p.slug}</a></td><td>${dt(p.updated_at)}</td><td><button class="icbtn" onClick=${() => setEd(p)}><${Ic} n="edit" s=${15}/></button></td></tr>`)}</tbody></table></div>`}<//>
@@ -89,9 +89,9 @@ function PageEdit({ p, onClose, onDone }) {
 
 // ================= Settings & integrations =================
 export function Settings({ user }) {
-  const q = useApi('/api/cms/settings'); const [tab, setTab] = useState('company');
-  return html`<div><div class="ph"><h1>Settings & integrations</h1></div>
-  <${Tabs} tabs=${[['company', 'Company & website'], ['sales', 'Sales rules'], ['whatsapp', 'WhatsApp API'], ['channels', 'Lead channels'], ['email', 'Email'], ['payments', 'Payments'], ['data', 'Backup & data'], ['account', 'My account']]} cur=${tab} onChange=${setTab}/>
+  const q = useApi('/api/cms/settings'); const [tab, setTab] = useState('sales');
+  return html`<div><div class="ph"><h1>Settings & integrations</h1><a class="btn b-ghost" href="/admin#/settings"><${Ic} n="globe" s=${15}/> Website & company details → Admin</a></div>
+  <${Tabs} tabs=${[['sales', 'Sales rules'], ['whatsapp', 'WhatsApp API'], ['channels', 'Lead channels'], ['email', 'Email'], ['payments', 'Payments'], ['data', 'Backup & data'], ['account', 'My account']]} cur=${tab} onChange=${setTab}/>
   <${Load} q=${q}>${(s) => html`<div class="mt"><${SettingsForm} key=${tab} tab=${tab} s=${s} reload=${q.reload}/></div>`}<//></div>`;
 }
 function SettingsForm({ tab, s, reload }) {
@@ -124,7 +124,7 @@ function SettingsForm({ tab, s, reload }) {
     <h4>Website</h4><p class="small muted">All website forms (enquiry, quote, quick enquiry, sector assessment, contact, service request) are captured automatically.</p>${SaveBtn}</div>`;
   if (tab === 'email') return html`<div class="card pad"><h4>Outgoing (quotations by email) — SMTP</h4><div class="form2">${fld('smtp_host', 'SMTP host', 'smtp.gmail.com')}${fld('smtp_port', 'Port', '587')}${fld('smtp_user', 'Username')}${fld('smtp_pass', 'Password / app password', '', 'password')}${fld('smtp_from', 'From', 'IT Paradise <info@itparadise.in>')}</div>
     <h4>Incoming enquiries → leads (IMAP, every 5 min)</h4><div class="form2">${fld('imap_host', 'IMAP host', 'imap.gmail.com')}${fld('imap_port', 'Port', '993')}${fld('imap_user', 'Mailbox (e.g. info@itparadise.in)')}${fld('imap_pass', 'Password / app password', '', 'password')}</div><p class="small muted">Unread emails become leads (sender, subject, phone number detected from body) and are marked read.</p>${SaveBtn}</div>`;
-  if (tab === 'payments') return html`<div class="card pad"><div class="form2">${fld('upi_id', 'UPI ID (for pay links & invoices)', 'itparadise@okaxis')}${fld('bank_details', 'Bank details (on invoices)')}${fld('payment_link_base', 'Payment gateway link template (optional)', 'https://rzp.io/l/{invoice}')}</div><p class="small muted">By default the payment link opens a page with UPI deep-link for the exact due amount. For card / netbanking, connect Razorpay / Cashfree payment links (gateway charges ~2%).</p>${SaveBtn}</div>`;
+  if (tab === 'payments') return html`<div class="card pad"><h4>Business & billing details</h4><div class="form2">${fld('company_name', 'Company name (on PDFs)')}${fld('gstin', 'GSTIN (on invoices)')}${fld('address', 'Billing address (on PDFs)')}${fld('google_review_url', 'Google review link (after installation)')}${fld('upi_id', 'UPI ID (for pay links & invoices)', 'itparadise@okaxis')}${fld('bank_details', 'Bank details (on invoices)')}${fld('payment_link_base', 'Payment gateway link template (optional)', 'https://rzp.io/l/{invoice}')}</div><p class="small muted">By default the payment link opens a page with UPI deep-link for the exact due amount. For card / netbanking, connect Razorpay / Cashfree payment links (gateway charges ~2%).</p>${SaveBtn}</div>`;
   if (tab === 'data') return html`<div class="card pad"><h4>Full backup</h4><p class="muted small">Download the complete database (all tables) as JSON. Railway Postgres also keeps automated backups.</p><${Btn} icon="download" onClick=${() => openFile('/api/backup', 'itparadise-backup.json')}>Download backup</${Btn}>
     <h4 class="mt">Restore</h4><p class="muted small t-red">Replaces ALL current data with the backup file.</p><input type="file" accept=".json" onChange=${async (e) => { if (!confirm('Restore will replace all current data. Continue?')) return; const j = JSON.parse(await e.target.files[0].text()); await run(() => api('restore', { body: j }), 'Restored'); }}/>
     <h4 class="mt">Export (CSV / Excel)</h4><div class="chips">${['customers', 'leads', 'quotations', 'orders', 'invoices', 'payments', 'products', 'suppliers', 'purchases', 'serials', 'jobs', 'amcs', 'activities', 'audit_log'].map(t => html`<button class="chip" onClick=${() => openFile('/api/export/' + t, t + '.csv')}>${t}</button>`)}</div>
@@ -134,3 +134,21 @@ function SettingsForm({ tab, s, reload }) {
 }
 function TestWa() { const [v, bind] = useForm({ phone: '', text: 'Test message from IT Paradise CRM ✅' }); return html`<div class="row gap"><input ...${bind('phone')} placeholder="91XXXXXXXXXX"/><input class="grow" ...${bind('text')}/><${Btn} kind="wa" onClick=${async () => { const r = await run(() => api('/api/cms/settings/test-whatsapp', { body: v })); toast(r.ok ? 'Sent ✓' : 'Failed: ' + (r.error || r.status), r.ok ? 'ok' : 'err'); }}>Send test</${Btn}></div>`; }
 export function Account() { const [p, setP] = useState(''); return html`<div class="card pad narrow"><h3>Change my password</h3><input type="password" value=${p} onInput=${(e) => setP(e.target.value)} placeholder="New password (min 6)"/><div class="mt"><${Btn} onClick=${async () => { await run(() => api('me/password', { body: { password: p } }), 'Password changed'); setP(''); }}>Update password</${Btn}></div></div>`; }
+
+// ================= Separate website admin (/admin) =================
+export function AdminHome() {
+  const p = useApi('/api/cms/products'); const c = useApi('/api/cms/categories'); const e = useApi('/api/cms/enquiries');
+  return html`<div><div class="ph"><h1>Website admin</h1><a class="btn b-ghost" href="/" target="_blank"><${Ic} n="ext" s=${15}/> View website</a></div>
+    <div class="kpis">${[['Products', p.data && p.data.length, '#/products'], ['Published', p.data && p.data.filter(x => x.published).length, '#/products'], ['Best sellers', p.data && p.data.filter(x => x.best_seller).length, '#/products'], ['Categories', c.data && c.data.length, '#/categories'], ['Enquiries (7 d)', e.data && e.data.week, '#/enquiries'], ['Quote requests (7 d)', e.data && e.data.quotes, '#/enquiries']].map(([l, v, h]) => html`<a class="kpi click" href=${h}><small>${l}</small><b>${v == null ? '…' : v}</b></a>`)}</div>
+    <div class="g2c"><div class="card pad"><h3>Quick actions</h3><div class="qa"><a class="btn b-ghost" href="#/products/new">+ New product</a><a class="btn b-ghost" href="#/categories">Manage categories</a><a class="btn b-ghost" href="#/banners">Home banners</a><a class="btn b-ghost" href="#/settings">Contact details, about us & SEO</a></div></div>
+    <div class="card pad"><h3>Latest website enquiries</h3><${Load} q=${e}>${(d) => d.rows.length ? d.rows.slice(0, 8).map(r => html`<div class="lrow"><div><b>${r.name}</b><small>${r.source_detail || ''} · ${r.need || ''}</small></div><small>${dt(r.created_at, 1)}</small></div>`) : html`<${Empty}/>`}<//><p class="muted small">Enquiries are handled by the sales team in the <a class="t-blue" href="/crm">CRM</a>.</p></div></div></div>`;
+}
+export function Enquiries() {
+  const e = useApi('/api/cms/enquiries');
+  return html`<div><div class="ph"><h1>Website enquiries</h1><a class="btn b-ghost" href="/crm#/leads">Open in CRM →</a></div><${Load} q=${e}>${(d) => html`<div class="card"><table class="tbl"><thead><tr><th>Date</th><th>Name</th><th>Mobile</th><th>Form</th><th>Requirement</th><th>Assigned</th><th>Stage</th></tr></thead><tbody>
+    ${d.rows.map(r => html`<tr><td>${dt(r.created_at, 1)}</td><td><b>${r.name}</b></td><td>${r.phone ? '+' + r.phone : ''}</td><td>${r.source_detail}</td><td class="clip">${r.need}</td><td>${r.owner || '—'}</td><td><${Badge} s=${r.stage}/></td></tr>`)}</tbody></table></div>`}<//></div>`;
+}
+export function WebsiteSettings() {
+  const q = useApi('/api/cms/settings');
+  return html`<div><div class="ph"><h1>Website settings</h1><a class="btn b-ghost" href="/" target="_blank"><${Ic} n="ext" s=${15}/> View website</a></div><${Load} q=${q}>${(s) => html`<${SettingsForm} tab="company" s=${s} reload=${q.reload}/>`}<//></div>`;
+}

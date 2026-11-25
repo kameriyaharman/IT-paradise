@@ -5,6 +5,7 @@ import * as O from './p-ops.js';
 import * as A from './p-admin.js';
 
 const MOBILE = location.pathname.startsWith('/app');
+const ADMIN = location.pathname.startsWith('/admin');
 
 export function Login({ onDone }) {
   const [v, bind] = useForm({ email: '', password: '', role: MOBILE ? 'sales' : '' });
@@ -15,7 +16,7 @@ export function Login({ onDone }) {
     catch (x) { setErr(x.message); }
   };
   return html`<div class="login"><form class="lbox" onSubmit=${submit}>
-    <div class="lbrand"><img src="/static/img/logo.svg" width="46"/><div><b>IT PARADISE</b><small>${MOBILE ? 'STAFF APP' : 'BUSINESS CRM'}</small></div></div>
+    <div class="lbrand"><img src="/static/img/logo.svg" width="46"/><div><b>IT PARADISE</b><small>${MOBILE ? 'STAFF APP' : ADMIN ? 'WEBSITE ADMIN' : 'BUSINESS CRM'}</small></div></div>
     ${MOBILE && html`<div class="roles">${[['owner', 'Owner'], ['sales', 'Sales'], ['tech', 'Technician']].map(([k, l]) => html`<button type="button" class=${v.role === k ? 'on' : ''} onClick=${() => bind('role').onInput({ target: { value: k } })}>${l}</button>`)}</div>`}
     <${F} l="Email or mobile"><input ...${bind('email')} autocomplete="username" required/></${F}>
     <${F} l="Password"><input type="password" ...${bind('password')} autocomplete="current-password" required/></${F}>
@@ -46,7 +47,7 @@ const NAV = [
   ['SALES', [['/', 'Dashboard', 'dash'], ['/inbox', 'WhatsApp inbox', 'chat'], ['/leads', 'Leads & pipeline', 'funnel'], ['/followups', 'Follow-ups', 'phone'], ['/quotations', 'Quotations', 'doc'], ['/orders', 'Orders & invoices', 'cart'], ['/payments', 'Payments & dues', 'rupee'], ['/customers', 'Customers', 'user']]],
   ['OPERATIONS', [['/stock', 'Stock & purchase', 'box'], ['/service', 'Service & AMC', 'tool'], ['/team', 'Team & tasks', 'users', 'owner']]],
   ['INSIGHTS', [['/reports', 'Reports', 'chart', 'owner'], ['/automations', 'Automations', 'zap', 'owner']]],
-  ['ADMIN', [['/website', 'Website admin', 'globe', 'owner'], ['/settings', 'Settings & integrations', 'gear', 'owner']]],
+  ['SETUP', [['/settings', 'Settings & integrations', 'gear', 'owner']]],
 ];
 
 function Shell({ user, route, children, onLogout }) {
@@ -58,7 +59,7 @@ function Shell({ user, route, children, onLogout }) {
       <a class="brand" href="#/"><img src="/static/img/logo.svg" width="34"/><div><b>IT PARADISE</b><small>TECHNOLOGY. INTEGRATED.</small></div></a>
       <div class="side-tag">BUSINESS CRM</div>
       ${NAV.map(([g, items]) => { const vis = items.filter(i => !i[3] || i[3] === user.role); return vis.length > 0 && html`<div class="ngroup"><div class="nlabel">${g}</div>${vis.map(([p, l, ic]) => html`<a href=${'#' + p} class=${base === p || (p === '/' && base === '/') ? 'on' : ''} onClick=${() => setMenu(false)}><${Ic} n=${ic}/>${l}</a>`)}</div>`; })}
-      <div class="side-foot"><a href="/" target="_blank"><${Ic} n="ext" s=${15}/> View website</a><a href="/app"><${Ic} n="phone" s=${15}/> Mobile app view</a><a href="/download/app"><${Ic} n="download" s=${15}/> Download Android app</a></div>
+      <div class="side-foot">${user.role === 'owner' && html`<a href="/admin"><${Ic} n="globe" s=${15}/> Website admin</a>`}<a href="/" target="_blank"><${Ic} n="ext" s=${15}/> View website</a><a href="/app"><${Ic} n="phone" s=${15}/> Mobile app view</a><a href="/download/app"><${Ic} n="download" s=${15}/> Download Android app</a></div>
     </aside>
     <div class="main">
       <header class="top">
@@ -96,10 +97,34 @@ function Router({ route, user }) {
     case 'team': return own ? html`<${O.Team}/>` : null;
     case 'reports': return own ? html`<${O.Reports}/>` : null;
     case 'automations': return own ? html`<${O.Automations}/>` : null;
-    case 'website': return own ? html`<${A.Website} tab=${p[1]} id=${p[2]}/>` : null;
+    case 'website': location.href = '/admin'; return null;
     case 'settings': return own ? html`<${A.Settings} user=${user}/>` : null;
     default: return html`<div class="empty">Page not found</div>`;
   }
+}
+
+const ANAV = [['WEBSITE', [['/', 'Overview', 'dash'], ['/products', 'Products', 'box'], ['/categories', 'Categories', 'list'], ['/brands', 'Brands', 'doc'], ['/sectors', 'Solutions by sector', 'users'], ['/banners', 'Home banners', 'camera'], ['/pages', 'Pages', 'doc'], ['/gallery', 'Photo gallery', 'camera']]],
+  ['LEADS', [['/enquiries', 'Website enquiries', 'chat']]], ['SETTINGS', [['/settings', 'Contact, about & SEO', 'gear'], ['/account', 'My account', 'user']]]];
+function AdminShell({ user, route, onLogout }) {
+  const [menu, setMenu] = useState(false);
+  const [path] = route.split('?'); const p = path.split('/').filter(Boolean); const base = '/' + (p[0] || '');
+  if (user.role !== 'owner') return html`<div class="login"><div class="lbox"><h3>Website admin is for the owner / admin account only.</h3><a class="btn b-pri" href="/crm">Go to CRM</a><button class="btn b-ghost" onClick=${onLogout}>Logout</button></div></div>`;
+  const page = (() => { switch (p[0] || '') {
+    case '': return html`<${A.AdminHome}/>`;
+    case 'products': return p[1] ? html`<${A.ProductEdit} id=${p[1]}/>` : html`<div><div class="ph"><h1>Products</h1></div><${A.ProductList}/></div>`;
+    case 'categories': case 'brands': case 'sectors': case 'banners': case 'gallery': return html`<div><div class="ph"><h1>${{ categories: 'Categories', brands: 'Brands', sectors: 'Solutions by sector', banners: 'Home banners', gallery: 'Photo gallery' }[p[0]]}</h1></div><${A.Simple} t=${p[0]}/></div>`;
+    case 'pages': return html`<div><div class="ph"><h1>Pages</h1></div><${A.Pages}/></div>`;
+    case 'enquiries': return html`<${A.Enquiries}/>`;
+    case 'settings': return html`<${A.WebsiteSettings}/>`;
+    case 'account': return html`<div><div class="ph"><h1>My account</h1></div><${A.Account}/></div>`;
+    default: return html`<div class="empty">Page not found</div>`; } })();
+  return html`<div class=${'shell admin' + (menu ? ' menu-open' : '')}>
+    <aside class="side"><a class="brand" href="#/"><img src="/static/img/logo.svg" width="34"/><div><b>IT PARADISE</b><small>TECHNOLOGY. INTEGRATED.</small></div></a><div class="side-tag">WEBSITE ADMIN</div>
+      ${ANAV.map(([g, items]) => html`<div class="ngroup"><div class="nlabel">${g}</div>${items.map(([h, l, ic]) => html`<a href=${'#' + h} class=${base === h ? 'on' : ''} onClick=${() => setMenu(false)}><${Ic} n=${ic}/>${l}</a>`)}</div>`)}
+      <div class="side-foot"><a href="/" target="_blank"><${Ic} n="ext" s=${15}/> View website</a><a href="/crm"><${Ic} n="dash" s=${15}/> Open CRM</a></div></aside>
+    <div class="main"><header class="top"><button class="icbtn burger" onClick=${() => setMenu(!menu)}><${Ic} n="list"/></button><div class="gsearch"></div>
+      <div class="top-r"><a class="btn b-pri" href="#/products/new"><${Ic} n="plus" s=${16}/> Add product</a><div class="me"><span class="av">${initials(user.name)}</span><div><b>${user.name}</b><small>Website admin</small></div><button class="icbtn" title="Logout" onClick=${onLogout}><${Ic} n="logout" s=${16}/></button></div></div></header>
+      <div class="page">${page}</div></div></div>`;
 }
 
 function App() {
@@ -109,6 +134,7 @@ function App() {
   const logout = async () => { await api('auth/logout', { body: {} }).catch(() => { }); auth.set(null); setUser(null); };
   if (user === undefined) return html`<div class="boot"><img src="/static/img/logo.svg" width="56"/></div>`;
   if (!user) return html`<${Login} onDone=${(u) => { auth.user = u; setUser(u); api('me').then(d => auth.me = d); go('/'); }}/>`;
+  if (ADMIN) return html`<${AdminShell} user=${user} route=${route} onLogout=${logout}/>`;
   if (MOBILE) return html`<${MobileApp} user=${user} route=${route} onLogout=${logout}/>`;
   if (user.role === 'tech') { location.href = '/app'; return null; }
   return html`<${Shell} user=${user} route=${route} onLogout=${logout}><${Router} route=${route} user=${user}/><//>`;

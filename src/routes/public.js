@@ -56,4 +56,40 @@ r.post('/service', h(async (req, res) => {
   res.json({ ok: true, ticket: number, track: `/track/${job.track_token}` });
 }));
 
+r.get('/products', h(async (req, res) => {
+  const ids = String(req.query.ids || '').split(',').map(Number).filter(Boolean).slice(0, 60);
+  if (!ids.length) return res.json([]);
+  const { art } = require('../art');
+  const rows = await q(`SELECT p.id,p.slug,p.name,p.price,p.mrp,p.art,p.image_ids,p.sku,c.name cat FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.id = ANY($1) AND p.published`, [ids]);
+  res.json(rows.map(r => ({ ...r, art_svg: r.image_ids && r.image_ids.length ? null : art(r.art) })));
+}));
+
+// Quote list (multi-product) → lead + draft quotation in CRM
+r.post('/quote-request', h(async (req, res) => {
+  const d = req.body || {};
+  if (d.website) return res.json({ ok: true });
+  if (!d.name || !validPhone(d.mobile)) return res.status(400).json({ error: 'Please enter your name and a valid 10-digit mobile number' });
+  const items = (Array.isArray(d.items) ? d.items : []).map(i => ({ id: +i.id, qty: Math.max(1, Math.min(9999, parseInt(i.qty) || 1)) })).filter(i => i.id).slice(0, 60);
+  if (!items.length) return res.status(400).json({ error: 'Your quote list is empty' });
+  const prods = await q('SELECT id,name,price,category_id FROM products WHERE id = ANY($1) AND published', [items.map(i => i.id)]);
+  const lines = items.map(i => ({ ...i, p: prods.find(p => p.id === i.id) })).filter(i => i.p);
+  if (!lines.length) return res.status(400).json({ error: 'Products not available' });
+  const est = lines.reduce((a, l) => a + l.qty * +l.p.price, 0);
+  const cat = await one('SELECT c.slug FROM categories c WHERE c.id=$1', [lines[0].p.category_id]);
+  const need = lines.map(l => `${l.qty} × ${l.p.name}`).join(', ') + (d.install ? ' · with installation' : '') + (d.message ? ' · ' + d.message : '');
+  const { lead } = await captureLead({ name: d.name, phone: d.mobile, email: d.email, company: d.company, city: d.city, need: need.slice(0, 1000),
+    quantity: String(lines.reduce((a, l) => a + l.qty, 0)), source: 'website', source_detail: `Quote list (${lines.length} products)`, category: cat && cat.slug, value: Math.round(est * 1.18) });
+  // Draft quotation ready for the salesperson to review & send
+  const W = require('../workflows');
+  const ownerUser = lead.owner_id ? await one('SELECT id,name,role FROM users WHERE id=$1', [lead.owner_id]) : await one(`SELECT id,name,role FROM users WHERE role='owner' AND active ORDER BY id LIMIT 1`);
+  let qt = null;
+  if (ownerUser) {
+    qt = await W.saveQuotation({ lead_id: lead.id, notes: 'Auto-created from website quote list' + (d.message ? ': ' + d.message : ''), payment_terms: '50% advance',
+      items: [...lines.map(l => ({ product_id: l.id, qty: l.qty })), ...(d.install ? [{ description: 'Installation & configuration (to be confirmed after site survey)', qty: 1, rate: 0, gst_rate: 18 }] : [])] }, { ...ownerUser, role: 'owner' });
+    const { notifyUser } = require('../notify');
+    if (lead.owner_id) await notifyUser(lead.owner_id, `Website quote list: ${lead.name}`, `${lines.length} products · draft ${qt.number} ready to review & send`, `/crm#/quotations/${qt.id}`);
+  }
+  res.json({ ok: true, ref: `ENQ-${lead.id}`, items: lines.length });
+}));
+
 module.exports = r;

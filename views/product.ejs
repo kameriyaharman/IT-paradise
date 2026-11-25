@@ -16,9 +16,11 @@
       <div class="pd-price"><% if (+p.price > 0) { %><b>₹<%= inr(p.price) %></b><% if (off) { %><s>₹<%= inr(p.mrp) %></s><span class="b-green"><%= off %>% off</span><% } %><small>+ GST · installation extra</small><% } else { %><b>Price on request</b><% } %></div>
       <div class="hl"><% (p.highlights || []).forEach(x => { %><span><%= x %></span><% }) %></div>
       <div class="bulk"><b>Bulk / project price?</b><span>Buying 8+ units or a full setup? Get a custom quote with installation.</span></div>
+      <div class="qtyrow"><span>Quantity</span><div class="qty"><button type="button" data-step="-1">−</button><input id="pdQty" type="number" min="1" value="1" inputmode="numeric"><button type="button" data-step="1">+</button></div></div>
       <div class="pd-btns">
         <button class="btn btn-primary" data-open="enquiry" data-product="<%= p.id %>" data-pname="<%= p.name %>" data-price="<%= p.price %>"><%- icon('chat', 16) %> Enquire now</button>
         <a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Hi IT Paradise, I want details/price for: ' + p.name + ' (SKU ' + (p.sku || '') + ')') %>"><%- icon('wa', 16) %> WhatsApp</a>
+        <button class="btn btn-navy addq" data-addq="<%= p.id %>" data-pname="<%= p.name %>" data-qtyfrom="#pdQty"><%- icon('cart', 16) %> Add to quote</button>
         <a class="btn btn-outline" href="tel:<%= s.phone_sales || '' %>"><%- icon('phone', 16) %> Call</a>
       </div>
       <div class="perks"><div><%- icon('truck', 18) %><span>Delivery in Bhilwara</span></div><div><%- icon('tool', 18) %><span>Installation</span></div><div><%- icon('shield', 18) %><span><%= p.warranty_months >= 12 ? (p.warranty_months / 12) + '-year' : p.warranty_months + '-month' %> warranty</span></div><div><%- icon('headset', 18) %><span>Expert support</span></div></div>
@@ -35,7 +37,7 @@
     </div>
     <aside>
       <div class="card fbt"><h3>Frequently bought together</h3>
-        <% together.forEach(t => { %><div class="fbt-row"><a href="/product/<%= t.slug %>" class="fbt-img"><%- img(t) %></a><div><a href="/product/<%= t.slug %>"><%= t.name %></a><b><%= +t.price ? '₹' + inr(t.price) : 'On request' %></b></div><button class="btn btn-xs btn-outline" data-add="<%= t.name %>">Add to enquiry</button></div><% }) %>
+        <% together.forEach(t => { %><div class="fbt-row"><a href="/product/<%= t.slug %>" class="fbt-img"><%- img(t) %></a><div><a href="/product/<%= t.slug %>"><%= t.name %></a><b><%= +t.price ? '₹' + inr(t.price) : 'On request' %></b></div><button class="btn btn-xs btn-outline addq" data-addq="<%= t.id %>" data-pname="<%= t.name %>">Add to quote</button></div><% }) %>
       </div>
       <form class="card qform" data-api="/api/public/enquiry"><h3>Quick enquiry</h3>
         <input type="hidden" name="product_id" value="<%= p.id %>"><input type="hidden" name="form" value="Product page quick enquiry"><input type="hidden" name="items"><input type="text" name="website" class="hp" tabindex="-1" autocomplete="off">

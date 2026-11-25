@@ -1,0 +1,27 @@
+<%- include('partials/header') %>
+<div class="wrap sec-sm">
+  <nav class="crumbs"><a href="/">Home</a> <%- icon('right', 12) %> <span>My quote list</span></nav>
+  <div class="eyebrow">GET ONE COMBINED QUOTATION</div>
+  <h1 class="h1">My quote list</h1>
+  <p class="muted">Add all the products you need, set quantities and send — we reply on WhatsApp with one quotation (with installation) within 30 minutes.</p>
+  <div class="qlist-grid">
+    <div>
+      <div class="card qlist" id="qlist"><div class="empty-q"><%- icon('cart', 40) %><h3>Your quote list is empty</h3><p class="muted">Browse products and tap “Add to quote”.</p><a href="/products" class="btn btn-primary"><%- icon('arrow', 16) %> Browse products</a></div></div>
+      <p class="mt"><a href="/products" class="btn btn-outline"><%- icon('plus', 16) %> Add more products</a></p>
+    </div>
+    <form class="card qform qsend" id="qsend" data-quote>
+      <h3>Your details</h3>
+      <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off">
+      <div class="g2"><label>Name *<input name="name" required></label><label>Mobile *<input name="mobile" required inputmode="tel" placeholder="+91 98XXX XXXXX"></label></div>
+      <div class="g2"><label>Company / school<input name="company"></label><label>City<input name="city" placeholder="Bhilwara"></label></div>
+      <label>Email<input name="email" type="email"></label>
+      <label>Message<input name="message" placeholder="Site address, timeline, brand preference…"></label>
+      <label class="chkl"><input type="checkbox" name="install" checked> I need installation / setup</label>
+      <div class="qtot"><span>Estimated total</span><b id="qEst">₹0</b><small>+ GST · final price in quotation</small></div>
+      <button class="btn btn-primary btn-block"><%- icon('quote', 16) %> Get quote for all products</button>
+      <p class="mnote"><%- icon('wa', 14) %> We reply on WhatsApp within 30 minutes</p>
+      <p class="merr" hidden></p>
+    </form>
+  </div>
+</div>
+<%- include('partials/footer') %>

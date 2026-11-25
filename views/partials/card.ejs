@@ -11,5 +11,6 @@
       <button class="btn btn-primary btn-sm" data-open="enquiry" data-product="<%= p.id %>" data-pname="<%= p.name %>" data-price="<%= p.price %>"><%- icon('chat', 14) %> Enquire now</button>
       <a class="btn btn-wa btn-sm btn-ic" aria-label="WhatsApp about <%= p.name %>" target="_blank" rel="noopener" href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Hi IT Paradise, I want the price of: ' + p.name) %>"><%- icon('wa', 16) %></a>
     </div>
+    <button class="btn btn-outline btn-sm btn-block addq" data-addq="<%= p.id %>" data-pname="<%= p.name %>"><%- icon('cart', 14) %> Add to quote</button>
   </div>
 </article>

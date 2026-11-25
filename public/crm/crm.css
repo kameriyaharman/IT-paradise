@@ -128,3 +128,25 @@ body.mobile .board{grid-template-columns:repeat(7,80vw)}
 .tbl td.nowrap{white-space:nowrap}.tbl td.nowrap>.btn,.tbl td.nowrap>a.btn{margin:2px 0}
 .b-pri,.b-green,.b-wa,.b-navy{background-size:200% 100%;transition:background-position .5s,transform .15s,box-shadow .2s}.b-pri:hover,.b-green:hover,.b-wa:hover,.b-navy:hover{background-position:100% 0;transform:translateY(-1px)}
 .b-green{background-image:linear-gradient(120deg,#22C55E,#16A34A,#15803D,#22C55E)}.b-wa{background-image:linear-gradient(120deg,#3BE07A,#22C55E,#128C7E,#3BE07A)}.b-navy{background-image:linear-gradient(120deg,#2A4F96,#132C5C,#0B1F44,#2A4F96)}.b-pri{background-image:linear-gradient(120deg,#3EC1FF,#1E9BE0,#1565C0,#3EC1FF)}
+/* ===== Same button system as the website (CRM, admin, app) ===== */
+:root{--g-blue:linear-gradient(120deg,#3EC1FF 0%,#1E9BE0 35%,#1565C0 70%,#3EC1FF 100%);--g-wa:linear-gradient(120deg,#3BE07A 0%,#22C55E 40%,#128C7E 75%,#3BE07A 100%);--g-green:linear-gradient(120deg,#34D399 0%,#16A34A 45%,#15803D 75%,#34D399 100%);--g-navy:linear-gradient(120deg,#2A4F96 0%,#132C5C 45%,#0B1F44 75%,#2A4F96 100%);--g-ring:linear-gradient(120deg,#38B6F5,#6C8CFF,#1373C9)}
+.btn{position:relative;overflow:hidden;isolation:isolate;background-size:220% 100%;transition:background-position .6s ease,transform .2s ease,box-shadow .25s ease,color .2s}
+.btn:after{content:'';position:absolute;top:0;left:-75%;width:50%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);z-index:-1;pointer-events:none}
+.btn:not(:disabled):hover:after{animation:shine .75s ease}@keyframes shine{to{left:130%}}
+.btn:not(:disabled):hover{transform:translateY(-2px);background-position:100% 0}.btn:not(:disabled):active{transform:translateY(0) scale(.98)}
+.b-pri{background-image:var(--g-blue);color:#fff;box-shadow:0 6px 18px rgba(30,155,224,.32)}.b-pri:not(:disabled):hover{box-shadow:0 10px 24px rgba(30,155,224,.42)}
+.b-wa{background-image:var(--g-wa);color:#fff;box-shadow:0 6px 16px rgba(34,197,94,.28)}
+.b-green{background-image:var(--g-green);color:#fff;box-shadow:0 6px 16px rgba(22,163,74,.28)}
+.b-navy{background-image:var(--g-navy);color:#fff;box-shadow:0 6px 16px rgba(11,31,68,.25)}
+.b-ghost{border:1.5px solid transparent;background:linear-gradient(#fff,#fff) padding-box,var(--g-ring) border-box;color:var(--navy)}
+.b-ghost:not(:disabled):hover{background:var(--g-blue) padding-box,var(--g-ring) border-box;background-size:220% 100%;color:#fff;border-color:transparent}
+.tabs .on,.roles .on{background:var(--g-navy);background-size:200% 100%;color:#fff}
+.chip{transition:all .2s}.chip:hover,.chip.on{border-color:transparent;background:var(--g-blue);background-size:200% 100%;color:#fff}
+.ngroup a{transition:background .2s,transform .2s}.ngroup a:hover{transform:translateX(3px)}.ngroup a.on{background:var(--g-blue);background-size:200% 100%;box-shadow:0 6px 16px rgba(30,155,224,.35)}
+.kpi,.card{transition:transform .25s,box-shadow .25s}.kpi.click:hover{transform:translateY(-3px);box-shadow:0 12px 28px rgba(11,31,68,.1)}
+.mtabs a.on{color:transparent;background:var(--g-blue);-webkit-background-clip:text;background-clip:text}.mtabs a.on .ic{color:#1E9BE0}
+.mk{transition:transform .2s}.mk:active{transform:scale(.97)}
+.page>div{animation:pgin .35s ease both}@keyframes pgin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* Website admin gets its own look */
+.shell.admin .side{background:linear-gradient(180deg,#1B1347,#0F1C3F)}.shell.admin .side-tag{color:#B9A8FF}.shell.admin .ngroup a.on{background:linear-gradient(120deg,#8B5CF6,#6366F1,#1E9BE0);box-shadow:0 6px 16px rgba(99,102,241,.4)}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}

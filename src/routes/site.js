@@ -101,6 +101,7 @@ r.get('/page/:slug', h(async (req, res, next) => {
   if (!page) return next();
   res.render('page', { ...b, page, gallery: null, title: page.meta_title || `${page.title} | IT Paradise`, desc: page.meta_desc || (page.body || '').slice(0, 155) });
 }));
+r.get('/quote', h(async (req, res) => res.render('quote', { ...(await base(req)), title: 'My quote list | IT Paradise', desc: 'Add products to your quote list and get one combined quotation with installation.' })));
 r.get('/enquiry-sent', h(async (req, res) => res.render('sent', { ...(await base(req)), title: 'Enquiry received | IT Paradise', desc: '' })));
 
 // Customer-facing documents

@@ -105,3 +105,79 @@
     }, 2600);
   }
 })();
+// ===== Quote list (multi-product quote request) =====
+(function () {
+  const KEY = 'itp_quote';
+  const $ = (s, el = document) => el.querySelector(s), $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const get = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } };
+  const set = (v) => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) { } badge(); };
+  const inr = (n) => '₹' + Math.round(Number(n || 0)).toLocaleString('en-IN');
+  function badge(bump) {
+    const n = get().reduce((a, i) => a + 1, 0);
+    $$('.qc-n').forEach(b => { b.textContent = n; b.hidden = !n; if (bump) { b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); } });
+  }
+  function toast(html) { document.querySelectorAll('.qtoast').forEach(x => x.remove()); const d = document.createElement('div'); d.className = 'toast qtoast'; d.innerHTML = html; document.body.appendChild(d); setTimeout(() => d.remove(), 3200); }
+  function add(id, name, qty) {
+    const l = get(); const ex = l.find(i => i.id === id);
+    if (ex) ex.qty += qty; else l.push({ id, qty });
+    set(l); badge(true);
+    toast(`✓ <b>${name}</b> added to quote list · <a href="/quote">View list (${l.length})</a>`);
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-addq]'); if (!b) return;
+    e.preventDefault();
+    const q = b.dataset.qtyfrom ? Math.max(1, parseInt($(b.dataset.qtyfrom).value) || 1) : 1;
+    add(+b.dataset.addq, b.dataset.pname, q);
+    b.classList.add('added'); setTimeout(() => b.classList.remove('added'), 1200);
+    // fly-to-cart effect
+    const cart = $('.qcart'); if (cart && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const a = b.getBoundingClientRect(), c = cart.getBoundingClientRect(); const dot = document.createElement('i'); dot.className = 'flydot';
+      dot.style.left = a.left + a.width / 2 + 'px'; dot.style.top = a.top + a.height / 2 + 'px'; document.body.appendChild(dot);
+      requestAnimationFrame(() => { dot.style.transform = `translate(${c.left + c.width / 2 - a.left - a.width / 2}px, ${c.top + c.height / 2 - a.top - a.height / 2}px) scale(.4)`; dot.style.opacity = '.2'; });
+      setTimeout(() => dot.remove(), 750);
+    }
+  });
+  $$('.qty [data-step]').forEach(b => b.addEventListener('click', () => { const i = b.parentElement.querySelector('input'); i.value = Math.max(1, (parseInt(i.value) || 1) + +b.dataset.step); }));
+  badge();
+
+  // Quote page
+  const box = $('#qlist'); if (!box) return;
+  let prods = [];
+  async function render() {
+    const l = get();
+    if (!l.length) { $('#qEst').textContent = '₹0'; return; }
+    if (prods.length < l.length || l.some(i => !prods.find(p => p.id === i.id))) prods = await fetch('/api/public/products?ids=' + l.map(i => i.id).join(',')).then(r => r.json());
+    const rows = l.map(i => ({ ...i, p: prods.find(p => p.id === i.id) })).filter(i => i.p);
+    let tot = 0;
+    box.innerHTML = `<div class="qhead"><b>${rows.length} product${rows.length > 1 ? 's' : ''}</b><button type="button" class="linkbtn" data-clear>Clear list</button></div>` + rows.map(r => {
+      const pr = +r.p.price; tot += pr * r.qty;
+      const img = r.p.image_ids && r.p.image_ids.length ? `<img src="/media/${r.p.image_ids[0]}" alt="">` : `<img src="/static/img/logo.svg" alt="" class="ph-img">`;
+      return `<div class="qrow" data-id="${r.id}"><a href="/product/${r.p.slug}" class="qimg">${img}</a><div class="qinfo"><small>${r.p.cat || ''}</small><a href="/product/${r.p.slug}">${r.p.name}</a><span>${pr ? inr(pr) + ' + GST each' : 'Price on request'}</span></div>
+        <div class="qty"><button type="button" data-d="-1">−</button><input type="number" min="1" value="${r.qty}"><button type="button" data-d="1">+</button></div><b class="qline">${pr ? inr(pr * r.qty) : '—'}</b><button type="button" class="qdel" aria-label="Remove">×</button></div>`;
+    }).join('');
+    $('#qEst').textContent = inr(tot);
+    // illustrations for products without photos
+    rows.forEach(r => { if (r.p.art_svg) box.querySelector(`.qrow[data-id="${r.id}"] .qimg`).innerHTML = r.p.art_svg; });
+  }
+  box.addEventListener('click', (e) => {
+    const row = e.target.closest('.qrow'); let l = get();
+    if (e.target.closest('[data-clear]')) { if (confirm('Clear your quote list?')) { set([]); location.reload(); } return; }
+    if (!row) return; const id = +row.dataset.id;
+    if (e.target.closest('.qdel')) { row.classList.add('out'); setTimeout(() => { set(l.filter(i => i.id !== id)); render().then(() => { if (!get().length) location.reload(); }); }, 250); return; }
+    const d = e.target.closest('[data-d]'); if (d) { const it = l.find(i => i.id === id); it.qty = Math.max(1, it.qty + +d.dataset.d); set(l); render(); }
+  });
+  box.addEventListener('change', (e) => { const row = e.target.closest('.qrow'); if (!row) return; const l = get(); const it = l.find(i => i.id === +row.dataset.id); it.qty = Math.max(1, parseInt(e.target.value) || 1); set(l); render(); });
+  render();
+  $('#qsend').addEventListener('submit', async (e) => {
+    e.preventDefault(); const f = e.target, err = $('.merr', f), btn = $('button.btn', f);
+    const l = get(); if (!l.length) { err.textContent = 'Your quote list is empty — add products first.'; err.hidden = false; return; }
+    const data = Object.fromEntries(new FormData(f).entries()); data.install = !!f.install.checked; data.items = l;
+    err.hidden = true; btn.disabled = true; const old = btn.innerHTML; btn.textContent = 'Sending…';
+    try {
+      const r = await fetch('/api/public/quote-request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Something went wrong');
+      if (window.gtag) gtag('event', 'generate_lead', { form: 'quote_list', items: l.length });
+      set([]); location.href = '/enquiry-sent';
+    } catch (ex) { err.textContent = ex.message; err.hidden = false; } finally { btn.disabled = false; btn.innerHTML = old; }
+  });
+})();
