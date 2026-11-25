@@ -1,0 +1,11 @@
+<%- include('partials/header') %>
+<% const steps = ['open','assigned','on_the_way','in_progress','completed']; const labels = {open:'Ticket created',assigned:'Technician assigned',on_the_way:'On the way',in_progress:'Work in progress',completed:'Completed',closed:'Completed',cancelled:'Cancelled'}; const cur = steps.indexOf(job.status === 'closed' ? 'completed' : job.status); %>
+<div class="wrap sec-sm narrow">
+  <div class="eyebrow"><%= job.kind === 'installation' ? 'INSTALLATION' : 'SERVICE' %> · <%= job.number %></div>
+  <h1 class="h2"><%= job.title || job.issue %></h1>
+  <% if (job.issue) { %><p class="muted"><%= job.issue %></p><% } %>
+  <ol class="track"><% steps.forEach((st, i) => { %><li class="<%= i <= cur ? 'done' : '' %>"><span></span><%= labels[st] %></li><% }) %></ol>
+  <% if (job.tech) { %><div class="card crow"><span class="cic"><%- icon('tool', 18) %></span><div><small>Technician</small><b><%= job.tech %></b></div></div><% } %>
+  <p class="mt"><a class="btn btn-wa" href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Status of ' + job.number + '?') %>" target="_blank"><%- icon('wa', 16) %> Ask on WhatsApp</a></p>
+</div>
+<%- include('partials/footer') %>

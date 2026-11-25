@@ -1,0 +1,77 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor
+        working-directory: mobile
+        run: npm install --no-audit --no-fund
+
+      - name: Generate Android project
+        working-directory: mobile
+        run: |
+          npx cap add android
+          npx capacitor-assets generate --android --iconBackgroundColor '#0B1F44' --splashBackgroundColor '#0B1F44'
+
+      - name: Permissions, version & signing
+        working-directory: mobile
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />#' $M
+          grep -n "permission" $M
+          G=android/app/build.gradle
+          sed -i "s/versionCode [0-9]*/versionCode ${{ github.run_number }}/; s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" $G
+          mkdir -p ~/.android && cp keystore/debug.keystore ~/.android/debug.keystore
+          npx cap sync android
+
+      - name: Build APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          ls -la app/build/outputs/apk/debug/
+
+      - name: Publish APK to website (/download/app)
+        run: |
+          cp mobile/android/app/build/outputs/apk/debug/app-debug.apk public/downloads/ITParadise.apk
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/downloads/ITParadise.apk
+          git commit -m "Update staff app APK v1.0.${{ github.run_number }}" || echo "no change"
+          git pull --rebase origin main && git push origin HEAD:main
+
+      - name: GitHub release (apk-latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-latest
+          name: "IT Paradise staff app v1.0.${{ github.run_number }}"
+          body: "Android app — Owner / Sales / Technician logins. Install: allow 'Install unknown apps' and open the APK."
+          files: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true

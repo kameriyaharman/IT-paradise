@@ -1,0 +1,28 @@
+<%- include('partials/header') %>
+<% const qs = (o) => { const x = Object.assign({}, query, o); Object.keys(x).forEach(k => (x[k] === '' || x[k] == null) && delete x[k]); const s2 = new URLSearchParams(x).toString(); return s2 ? '?' + s2 : ''; }; %>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Home</a> <%- icon('right', 12) %> <a href="/products">Products</a><% if (cat) { %> <%- icon('right', 12) %> <span><%= cat.name %></span><% } %></nav>
+  <% if (cat) { %>
+  <div class="filters">
+    <% (cat.subtypes || '').split(',').filter(Boolean).forEach(t => { %><a href="<%= qs({ type: query.type === t ? '' : t, page: '' }) %>" class="fchip <%= query.type === t ? 'on' : '' %>"><%= t %></a><% }) %>
+    <% if (brands.length) { %><select class="fsel" onchange="location.href=this.value"><option value="<%= qs({ brand: '' }) %>">Brand</option><% brands.forEach(b => { %><option value="<%= qs({ brand: b.id, page: '' }) %>" <%= +query.brand === b.id ? 'selected' : '' %>><%= b.name %></option><% }) %></select><% } %>
+    <% if (cat.slug === 'video-surveillance') { %><select class="fsel" onchange="location.href=this.value"><option value="<%= qs({ spec: '' }) %>">Resolution</option><% ['2 MP','4 MP','5 MP','8 MP'].forEach(r => { %><option value="<%= qs({ spec: r, page: '' }) %>" <%= query.spec === r ? 'selected' : '' %>>Resolution: <%= r %></option><% }) %></select><% } %>
+    <select class="fsel" onchange="location.href=this.value"><option value="<%= qs({ min: '', max: '' }) %>">Price</option>
+      <% [[0,5000],[5000,15000],[15000,50000],[50000,'']].forEach(([a,b]) => { %><option value="<%= qs({ min: a, max: b, page: '' }) %>" <%= String(query.min) === String(a) && String(query.max || '') === String(b) ? 'selected' : '' %>><%= b ? '₹' + inr(a) + ' – ₹' + inr(b) : 'Above ₹' + inr(a) %></option><% }) %></select>
+    <a href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Hi, I need expert advice on ' + cat.name) %>" class="btn btn-sm btn-outline" target="_blank" rel="noopener"><%- icon('headset', 14) %> Talk to expert</a>
+  </div>
+  <% } %>
+  <div class="list-head">
+    <div><h1 class="h1"><%= cat ? cat.name : (query.q ? 'Results for “' + query.q + '”' : 'All products') %></h1>
+      <p class="muted"><%= total %> products<%= cat ? ' · supply + installation available' : ' across ' + categories.length + ' categories' %></p></div>
+    <div class="list-tools">
+      <% if (!cat) { %><div class="pills"><a class="<%= !query.sort ? 'on' : '' %>" href="<%= qs({ sort: '' }) %>">Popular</a><a class="<%= query.sort === 'new' ? 'on' : '' %>" href="<%= qs({ sort: 'new' }) %>">New</a><a class="<%= query.sort === 'price' ? 'on' : '' %>" href="<%= qs({ sort: 'price' }) %>">Price ↑</a></div><% } %>
+      <% if (cat) { %><div class="pills view-tg"><button class="on" data-view="grid"><%- icon('grid', 14) %> Grid</button><button data-view="list"><%- icon('list', 14) %> List</button></div><% } %>
+      <button class="btn btn-sm btn-navy" data-open="enquiry" data-form="Bulk quote — <%= cat ? cat.name : 'All products' %>" data-need="1"><%- icon('quote', 14) %> Bulk quote</button>
+    </div>
+  </div>
+  <% if (!items.length) { %><div class="empty card"><h3>No products found</h3><p class="muted">Tell us what you need — we’ll source it for you.</p><button class="btn btn-primary" data-open="enquiry" data-need="1" data-form="Not found: <%= query.q || '' %>">Request a quote</button></div><% } %>
+  <div class="grid6 plist"><% items.forEach(p => { %><%- include('partials/card', { p }) %><% }) %></div>
+  <% if (pages > 1) { %><nav class="pager"><% for (let i = 1; i <= pages; i++) { if (i === 1 || i === pages || Math.abs(i - page) <= 2) { %><a href="<%= qs({ page: i }) %>" class="<%= i === page ? 'on' : '' %>"><%= i %></a><% } else if (Math.abs(i - page) === 3) { %><span>…</span><% } } %></nav><% } %>
+</div>
+<%- include('partials/footer') %>

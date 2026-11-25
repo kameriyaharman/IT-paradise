@@ -1,0 +1,7 @@
+<%- include('partials/header') %>
+<div class="wrap sec-sm">
+  <div class="eyebrow">BRANDS</div><h1 class="h1">Brands we work with</h1>
+  <p class="muted">We supply, install and support leading technology brands — ask us for the right brand for your budget.</p>
+  <div class="brand-grid big"><% brands.forEach(b => { %><a class="brand" href="/products?brand=<%= b.id %>"><% if (b.logo_id) { %><img src="/media/<%= b.logo_id %>" alt="<%= b.name %>"><% } else { %><%= b.name %><% } %><% if (b.count) { %><small><%= b.count %> products</small><% } %></a><% }) %></div>
+</div>
+<%- include('partials/footer') %>

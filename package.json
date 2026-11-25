@@ -1,0 +1,40 @@
+{
+  "name": "it-paradise",
+  "version": "1.0.0",
+  "description": "IT Paradise \u2014 website, admin panel, business CRM and staff app backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kameriyaharman/it-paradise.git"
+  },
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/kameriyaharman/it-paradise/issues"
+  },
+  "homepage": "https://github.com/kameriyaharman/it-paradise#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "compression": "^1.8.2",
+    "cookie-parser": "^1.4.7",
+    "ejs": "^7.0.2",
+    "express": "^5.3.0",
+    "htm": "^3.1.1",
+    "html5-qrcode": "^2.3.8",
+    "imapflow": "^2.12.2",
+    "jsonwebtoken": "^9.0.3",
+    "mailparser": "^3.15.0",
+    "multer": "^2.5.0",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.6.1",
+    "pdfkit": "^0.21.0",
+    "pg": "^8.23.1",
+    "preact": "^11.2.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "private": true
+}

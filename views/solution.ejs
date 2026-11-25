@@ -1,0 +1,24 @@
+<%- include('partials/header') %>
+<section class="sol-hero"><div class="wrap">
+  <div class="eyebrow">SOLUTIONS · <%= sector.name.toUpperCase() %></div>
+  <h1 class="h1"><%= sector.headline %></h1>
+  <p class="lead"><%= sector.intro %></p>
+  <div class="sol-tabs"><% sectors.forEach(x => { %><a href="/solutions/<%= x.slug %>" class="<%= x.slug === sector.slug ? 'on' : '' %>"><%= x.name %></a><% }) %></div>
+</div></section>
+<div class="wrap">
+  <div class="pkgs"><% (sector.packages || []).forEach(k => { %>
+    <article class="pkg card"><div class="pkg-img"><%- art(k.art) %></div><h3><%= k.t %></h3><p class="muted"><%= k.d %></p>
+      <div class="pkg-btns"><button class="btn btn-primary btn-sm" data-open="enquiry" data-need="1" data-needval="<%= sector.name %>: <%= k.t %>" data-form="Solution — <%= sector.name %>"><%- icon('chat', 14) %> Enquire</button>
+      <a class="btn btn-wa btn-sm" target="_blank" rel="noopener" href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Hi, I need ' + k.t + ' for ' + sector.name) %>"><%- icon('wa', 14) %> WhatsApp</a></div></article>
+  <% }) %></div>
+  <section class="assess card">
+    <div><div class="eyebrow">FREE <%= sector.slug === 'schools' ? 'CAMPUS' : 'SITE' %> ASSESSMENT</div><h2 class="h2">Get a complete <%= sector.slug === 'schools' ? 'school' : sector.name.toLowerCase().split(' ')[0] %> package quote</h2><p class="muted">One partner, one support desk — we visit, plan and quote the complete setup.</p></div>
+    <form class="qform" data-api="/api/public/enquiry">
+      <input type="hidden" name="form" value="Free assessment — <%= sector.name %>"><input type="text" name="website" class="hp" tabindex="-1" autocomplete="off">
+      <div class="g2"><label><%= sector.slug === 'schools' ? 'School name' : 'Name / organisation' %><input name="name" required></label><label>Mobile<input name="mobile" required inputmode="tel"></label></div>
+      <div class="g2"><label><%= sector.slug === 'schools' ? 'Students' : sector.slug === 'factories' ? 'Workforce' : 'Size / area' %><input name="students" placeholder="<%= sector.slug === 'schools' ? '800' : '' %>"></label><label>Need<input name="need" placeholder="CCTV + attendance + lab"></label></div>
+      <button class="btn btn-primary">Request assessment</button><p class="merr" hidden></p>
+    </form>
+  </section>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,15 @@
+<article class="pcard">
+  <a href="/product/<%= p.slug %>" class="pimg">
+    <% if (p.best_seller) { %><span class="tag-best">Best seller</span><% } %>
+    <%- img(p) %>
+  </a>
+  <div class="pbody">
+    <div class="pcat"><%= p.cat %></div>
+    <a href="/product/<%= p.slug %>" class="pname"><%= p.name %></a>
+    <div class="pprice"><% if (+p.price > 0) { %><b>₹<%= inr(p.price) %></b><% } else { %><b>On request</b><% } %><small>+GST</small></div>
+    <div class="pact">
+      <button class="btn btn-primary btn-sm" data-open="enquiry" data-product="<%= p.id %>" data-pname="<%= p.name %>" data-price="<%= p.price %>"><%- icon('chat', 14) %> Enquire now</button>
+      <a class="btn btn-wa btn-sm btn-ic" aria-label="WhatsApp about <%= p.name %>" target="_blank" rel="noopener" href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Hi IT Paradise, I want the price of: ' + p.name) %>"><%- icon('wa', 16) %></a>
+    </div>
+  </div>
+</article>

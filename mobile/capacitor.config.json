@@ -1,0 +1,12 @@
+{
+  "appId": "in.itparadise.staff",
+  "appName": "IT Paradise",
+  "webDir": "www",
+  "server": {
+    "url": "https://web-production-2c508107.up.railway.app/app",
+    "allowNavigation": ["web-production-2c508107.up.railway.app", "*.itparadise.in", "itparadise.in"],
+    "androidScheme": "https"
+  },
+  "android": { "allowMixedContent": false, "captureInput": true },
+  "plugins": { "SplashScreen": { "launchShowDuration": 800, "backgroundColor": "#0B1F44" } }
+}

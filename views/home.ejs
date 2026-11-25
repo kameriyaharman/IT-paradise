@@ -1,0 +1,82 @@
+<%- include('partials/header') %>
+<section class="hero"><div class="wrap hero-in">
+  <div class="hero-copy">
+    <div class="eyebrow light">YOUR TECHNOLOGY. OUR EXPERTISE.</div>
+    <h1>Technology.<br><span>Integrated.</span></h1>
+    <p>Computers, CCTV, networking, attendance, power backup and display — supplied, installed and supported by one trusted partner.</p>
+    <div class="hero-btns">
+      <a href="/products" class="btn btn-primary"><%- icon('arrow', 16) %> Shop products</a>
+      <a href="#quote" class="btn btn-ghost"><%- icon('quote', 16) %> Get a free quote</a>
+      <a href="https://wa.me/<%= waNum %>" target="_blank" rel="noopener" class="btn btn-wa"><%- icon('wa', 16) %> WhatsApp</a>
+    </div>
+    <div class="stats">
+      <div><b><%= s.stat_years || '2006' %></b><span>Trusted since</span></div>
+      <div><b><%= s.stat_products || '400+' %></b><span>Products</span></div>
+      <div><b><%= s.stat_installs || '5,000+' %></b><span>Installations</span></div>
+      <div><b><%= s.stat_sectors || '6' %></b><span>Sectors served</span></div>
+    </div>
+  </div>
+  <div class="hero-tiles">
+    <a href="/products/business-computing" class="htile"><%- art('laptop') %><span>Business computing</span></a>
+    <a href="/products/video-surveillance" class="htile"><%- art('dome') %><span>CCTV &amp; security</span></a>
+    <a href="/products/enterprise-networking" class="htile"><%- art('ap') %><span>Networking &amp; Wi-Fi</span></a>
+    <a href="/products/access-attendance" class="htile"><%- art('attendance') %><span>Attendance &amp; access</span></a>
+  </div>
+</div></section>
+
+<% if (banners.length) { %><section class="banners wrap"><% banners.forEach(b => { %><a class="banner" href="<%= b.link || '#' %>"><% if (b.image_id) { %><img src="/media/<%= b.image_id %>" alt="<%= b.title %>" loading="lazy"><% } %><div><b><%= b.title %></b><span><%= b.subtitle %></span></div></a><% }) %></section><% } %>
+
+<section class="sec"><div class="wrap">
+  <div class="eyebrow center">SHOP BY CATEGORY</div>
+  <h2 class="h2 center">Everything your home &amp; business needs</h2>
+  <div class="cats">
+    <% const carts = {'business-computing':'laptop','video-surveillance':'dome','enterprise-networking':'ap','access-attendance':'attendance','power-backup':'ups','print-display':'mfp'}; %>
+    <% categories.forEach(c => { %>
+    <a href="/products/<%= c.slug %>" class="cat"><div class="cat-img"><%- art(carts[c.slug]) %></div><b><%= c.name %></b><span><%= c.blurb %></span><small><%= c.count %> products</small></a>
+    <% }) %>
+  </div>
+</div></section>
+
+<section class="sec sec-tint"><div class="wrap">
+  <div class="sec-head">
+    <div><div class="eyebrow">BEST SELLERS</div><h2 class="h2">Most enquired products</h2></div>
+    <div class="pills" data-filter="best"><button class="on" data-f="">All</button><button data-f="Business computing">Computing</button><button data-f="Video surveillance">CCTV</button><button data-f="Enterprise networking">Networking</button><button data-f="Power backup">Power</button></div>
+  </div>
+  <div class="grid5" id="best"><% best.forEach(p => { %><div data-cat="<%= p.cat %>"><%- include('partials/card', { p }) %></div><% }) %></div>
+  <div class="center mt"><a href="/products" class="btn btn-outline"><%- icon('arrow', 16) %> View all <%= s.stat_products || '400+' %> products</a></div>
+</div></section>
+
+<section class="sec"><div class="wrap">
+  <div class="eyebrow center">SOLUTIONS BY SECTOR</div>
+  <h2 class="h2 center">Complete setups, one partner</h2>
+  <div class="sectors"><% sectors.forEach(x => { %><a href="/solutions/<%= x.slug %>" class="sector"><span class="sic"><%- icon(x.icon, 26) %></span><b><%= x.name %></b><small>See solution <%- icon('arrow', 12) %></small></a><% }) %></div>
+</div></section>
+
+<section class="sec sec-navy"><div class="wrap">
+  <div class="eyebrow center light">HOW WE WORK</div>
+  <h2 class="h2 center light">Assess. Supply. Integrate. Support.</h2>
+  <div class="steps">
+    <div><span><%- icon('chat', 22) %></span><b>Tell us your need</b><small>Call, WhatsApp or form</small></div>
+    <div><span><%- icon('pin', 22) %></span><b>Site assessment</b><small>One point of contact</small></div>
+    <div><span><%- icon('doc', 22) %></span><b>Custom quotation</b><small>Best brands &amp; price</small></div>
+    <div><span><%- icon('tool', 22) %></span><b>Install &amp; integrate</b><small>One connected ecosystem</small></div>
+    <div><span><%- icon('shield', 22) %></span><b>Ongoing support</b><small>AMC &amp; service</small></div>
+  </div>
+</div></section>
+
+<section class="sec" id="quote"><div class="wrap quote-blk">
+  <div>
+    <div class="eyebrow">GET A QUOTE IN 30 MINUTES</div>
+    <h2 class="h2">Tell us what you need</h2>
+    <p class="muted">Bulk / corporate / school orders welcome.</p>
+    <ul class="ticks"><li><%- icon('check', 16) %> Technology is important. The right partner is everything.</li><li><%- icon('check', 16) %> Supply + installation + support from one team</li><li><%- icon('check', 16) %> Serving Bhilwara since 2006</li></ul>
+  </div>
+  <form class="qform card" data-api="/api/public/enquiry">
+    <input type="hidden" name="form" value="Home quote form"><input type="text" name="website" class="hp" tabindex="-1" autocomplete="off">
+    <div class="g2"><label>Name<input name="name" required></label><label>Mobile<input name="mobile" required inputmode="tel"></label></div>
+    <div class="g2"><label>Product / category<input name="need" placeholder="CCTV for office"></label><label>Quantity<input name="quantity" placeholder="8 cameras"></label></div>
+    <div class="g2 btns"><button class="btn btn-primary">Request quote</button><a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Hi IT Paradise, I need a quotation.') %>"><%- icon('wa', 16) %> WhatsApp</a></div>
+    <p class="merr" hidden></p>
+  </form>
+</div></section>
+<%- include('partials/footer') %>

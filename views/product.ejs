@@ -1,0 +1,52 @@
+<%- include('partials/header') %>
+<div class="wrap">
+  <nav class="crumbs"><a href="/">Home</a> <%- icon('right', 12) %> <a href="/products/<%= p.cslug %>"><%= p.cat %></a><% if (p.subtype) { %> <%- icon('right', 12) %> <a href="/products/<%= p.cslug %>?type=<%= encodeURIComponent(p.subtype) %>"><%= p.subtype %></a><% } %> <%- icon('right', 12) %> <span><%= p.name %></span></nav>
+  <section class="pd">
+    <div class="pd-gal">
+      <div class="pd-main" id="pdMain"><%- img(p, 'big') %></div>
+      <div class="pd-thumbs">
+        <% if (p.image_ids && p.image_ids.length) { p.image_ids.forEach((id, i) => { %><button class="<%= i === 0 ? 'on' : '' %>" data-src="/media/<%= id %>"><img src="/media/<%= id %>" alt=""></button><% }) } else { %>
+        <button class="on"><%- art(p.art) %></button><% together.slice(0, 3).forEach(t => { %><button><%- art(t.art) %></button><% }) %><button><%- art(p.art) %></button><% } %>
+      </div>
+    </div>
+    <div class="pd-info">
+      <div class="badges"><span class="b-blue"><%= (p.subtype || p.cat || '').toUpperCase() %></span><% if (p.stock - p.reserved > 0) { %><span class="b-green">In stock</span><% } else { %><span class="b-amber">On order</span><% } %></div>
+      <h1 class="pd-title"><%= p.name %></h1>
+      <div class="muted small">Model: <%= p.model || '—' %><% if (p.brand) { %> · <%= p.brand %><% } %> · SKU <%= p.sku || '—' %></div>
+      <div class="pd-price"><% if (+p.price > 0) { %><b>₹<%= inr(p.price) %></b><% if (off) { %><s>₹<%= inr(p.mrp) %></s><span class="b-green"><%= off %>% off</span><% } %><small>+ GST · installation extra</small><% } else { %><b>Price on request</b><% } %></div>
+      <div class="hl"><% (p.highlights || []).forEach(x => { %><span><%= x %></span><% }) %></div>
+      <div class="bulk"><b>Bulk / project price?</b><span>Buying 8+ units or a full setup? Get a custom quote with installation.</span></div>
+      <div class="pd-btns">
+        <button class="btn btn-primary" data-open="enquiry" data-product="<%= p.id %>" data-pname="<%= p.name %>" data-price="<%= p.price %>"><%- icon('chat', 16) %> Enquire now</button>
+        <a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Hi IT Paradise, I want details/price for: ' + p.name + ' (SKU ' + (p.sku || '') + ')') %>"><%- icon('wa', 16) %> WhatsApp</a>
+        <a class="btn btn-outline" href="tel:<%= s.phone_sales || '' %>"><%- icon('phone', 16) %> Call</a>
+      </div>
+      <div class="perks"><div><%- icon('truck', 18) %><span>Delivery in Bhilwara</span></div><div><%- icon('tool', 18) %><span>Installation</span></div><div><%- icon('shield', 18) %><span><%= p.warranty_months >= 12 ? (p.warranty_months / 12) + '-year' : p.warranty_months + '-month' %> warranty</span></div><div><%- icon('headset', 18) %><span>Expert support</span></div></div>
+    </div>
+  </section>
+
+  <section class="pd2">
+    <div class="tabs card">
+      <div class="tab-h" role="tablist"><button class="on" data-tab="specs">Specifications</button><button data-tab="desc">Description</button><button data-tab="dl">Downloads</button><button data-tab="faq">FAQ</button></div>
+      <div class="tab-b on" data-pane="specs"><table class="specs"><% (p.specs || []).forEach(r => { %><tr><th><%= r.k %></th><td><%= r.v %></td></tr><% }) %></table></div>
+      <div class="tab-b" data-pane="desc"><p><%= p.description %></p></div>
+      <div class="tab-b" data-pane="dl"><p class="muted">Datasheet and brochure are shared on request.</p><button class="btn btn-sm btn-outline" data-open="enquiry" data-product="<%= p.id %>" data-pname="<%= p.name %>" data-form="Datasheet request">Request datasheet</button></div>
+      <div class="tab-b" data-pane="faq"><% (p.faq || []).forEach(f => { %><details><summary><%= f.q %></summary><p><%= f.a %></p></details><% }) %></div>
+    </div>
+    <aside>
+      <div class="card fbt"><h3>Frequently bought together</h3>
+        <% together.forEach(t => { %><div class="fbt-row"><a href="/product/<%= t.slug %>" class="fbt-img"><%- img(t) %></a><div><a href="/product/<%= t.slug %>"><%= t.name %></a><b><%= +t.price ? '₹' + inr(t.price) : 'On request' %></b></div><button class="btn btn-xs btn-outline" data-add="<%= t.name %>">Add to enquiry</button></div><% }) %>
+      </div>
+      <form class="card qform" data-api="/api/public/enquiry"><h3>Quick enquiry</h3>
+        <input type="hidden" name="product_id" value="<%= p.id %>"><input type="hidden" name="form" value="Product page quick enquiry"><input type="hidden" name="items"><input type="text" name="website" class="hp" tabindex="-1" autocomplete="off">
+        <label>Name<input name="name" required></label><label>Mobile<input name="mobile" required inputmode="tel"></label><label>Quantity<input name="quantity" value="1" inputmode="numeric"></label>
+        <div class="added muted small" hidden></div>
+        <button class="btn btn-primary btn-block">Send enquiry</button><p class="merr" hidden></p>
+      </form>
+    </aside>
+  </section>
+
+  <% if (similar.length) { %><section class="sec-sm"><h2 class="h3">Similar products</h2><div class="grid5"><% similar.forEach(x => { %><%- include('partials/card', { p: x }) %><% }) %></div></section><% } %>
+</div>
+<script type="application/ld+json"><%- JSON.stringify({"@context":"https://schema.org","@type":"Product","name":p.name,"sku":p.sku,"description":p.description,"category":p.cat,"offers":+p.price>0?{"@type":"Offer","priceCurrency":"INR","price":p.price,"availability":"https://schema.org/InStock"}:undefined}) %></script>
+<%- include('partials/footer') %>

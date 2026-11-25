@@ -1,0 +1,60 @@
+</main>
+<footer class="ftr"><div class="wrap ftr-grid">
+  <div class="fcol-brand">
+    <a href="/" class="logo logo-light"><img src="/static/img/logo.svg" alt="" width="40" height="40"><span><b><%= s.company_name || 'IT PARADISE' %></b><small>TECHNOLOGY. INTEGRATED.</small></span></a>
+    <p>One partner for computing, security, networking, power and display — supplied, integrated and supported since 2006.</p>
+  </div>
+  <div><h4>Products</h4><% categories.forEach(c => { %><a href="/products/<%= c.slug %>"><%= c.name %></a><% }) %></div>
+  <div><h4>Solutions</h4><% sectors.forEach(x => { %><a href="/solutions/<%= x.slug %>"><%= x.name %></a><% }) %></div>
+  <div><h4>Support</h4><a href="#" data-open="enquiry" data-form="Request a quotation (footer)">Request a quotation</a><a href="#" data-open="service">Request a service</a><a href="/page/amc-plans">AMC plans</a><a href="/page/warranty">Warranty &amp; returns</a><a href="/gallery">Photo gallery</a></div>
+  <div><h4>Contact</h4>
+    <% if (s.phone_sales) { %><a href="tel:<%= s.phone_sales %>"><%= s.phone_sales %></a><% } %>
+    <% if (s.email) { %><a href="mailto:<%= s.email %>"><%= s.email %></a><% } %>
+    <span><%= s.city || 'Bhilwara, Rajasthan' %></span><span><%= s.timings || 'Mon–Sat · 10 AM – 8 PM' %></span>
+  </div>
+</div>
+<div class="wrap ftr-bot"><span>© <%= new Date().getFullYear() %> IT Paradise · itparadise.in</span><span><a href="/page/privacy">Privacy</a> · <a href="/page/terms">Terms</a> · <a href="#" data-cookie>Cookie settings</a></span></div>
+</footer>
+
+<a class="fab-wa" href="https://wa.me/<%= waNum %>" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><%- icon('wa', 28) %></a>
+<div class="mbar">
+  <a href="tel:<%= s.phone_sales || '' %>"><%- icon('phone', 18) %> Call</a>
+  <a href="https://wa.me/<%= waNum %>" class="wa" target="_blank" rel="noopener"><%- icon('wa', 18) %> WhatsApp</a>
+  <a href="#" class="q" data-open="enquiry" data-form="Get quote (mobile bar)"><%- icon('quote', 18) %> Get quote</a>
+</div>
+
+<!-- Enquiry popup -->
+<div class="modal" id="m-enquiry" role="dialog" aria-modal="true" aria-labelledby="enq-h" hidden>
+  <form class="mbox" data-api="/api/public/enquiry">
+    <button type="button" class="mx" data-close aria-label="Close"><%- icon('x', 20) %></button>
+    <div class="eyebrow">ENQUIRY</div>
+    <h3 id="enq-h">Enquire about this product</h3>
+    <div class="enq-prod" hidden><span class="enq-pname"></span><b class="enq-price"></b></div>
+    <input type="hidden" name="product_id"><input type="hidden" name="form" value="Product enquiry popup"><input type="text" name="website" class="hp" tabindex="-1" autocomplete="off">
+    <div class="g2"><label>Name<input name="name" required placeholder="Ramesh Jain"></label><label>Mobile<input name="mobile" required inputmode="tel" placeholder="+91 98XXX XXXXX"></label></div>
+    <div class="g2"><label>Quantity<input name="quantity" inputmode="numeric" placeholder="8"></label><label>City<input name="city" placeholder="Bhilwara"></label></div>
+    <label class="need-wrap" hidden>Requirement<input name="need" placeholder="e.g. CCTV for office"></label>
+    <div class="seg" role="radiogroup"><label><input type="radio" name="mode" value="install" checked><span>With installation</span></label><label><input type="radio" name="mode" value="product"><span>Product only</span></label><label><input type="radio" name="mode" value="bulk"><span>Bulk / project</span></label></div>
+    <button class="btn btn-primary btn-block">Send enquiry</button>
+    <p class="mnote"><%- icon('wa', 14) %> We reply on WhatsApp within 30 minutes</p>
+    <p class="merr" hidden></p>
+  </form>
+</div>
+<!-- Service popup -->
+<div class="modal" id="m-service" role="dialog" aria-modal="true" aria-labelledby="svc-h" hidden>
+  <form class="mbox" data-api="/api/public/service">
+    <button type="button" class="mx" data-close aria-label="Close"><%- icon('x', 20) %></button>
+    <div class="eyebrow">REQUEST A SERVICE</div>
+    <h3 id="svc-h">Something not working?</h3>
+    <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off">
+    <div class="chips"><% ['Computer','CCTV','Network','Attendance','UPS','Printer'].forEach((c,i) => { %><label><input type="radio" name="category" value="<%= c %>" <%= i===1?'checked':'' %>><span><%= c %></span></label><% }) %></div>
+    <label>Problem<input name="problem" required placeholder="3 cameras not showing"></label>
+    <div class="g2"><label>Name<input name="name" placeholder="Your name"></label><label>Mobile<input name="mobile" required inputmode="tel" placeholder="Registered number"></label></div>
+    <button class="btn btn-navy btn-block">Book technician</button>
+    <div class="ticket-ok" hidden><%- icon('check', 18) %> Ticket <b></b> created ✓ <a href="https://wa.me/<%= waNum %>" target="_blank">Track on WhatsApp</a></div>
+    <p class="merr" hidden></p>
+  </form>
+</div>
+<div class="cookie" hidden><span>We use essential cookies only, plus analytics if you allow.</span><button class="btn btn-sm btn-primary" data-cookie-ok>OK</button></div>
+<script src="/static/js/site.js?v=3" defer></script>
+</body></html>

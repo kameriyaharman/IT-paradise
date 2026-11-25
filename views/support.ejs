@@ -1,0 +1,13 @@
+<%- include('partials/header') %>
+<div class="wrap sec-sm">
+  <div class="eyebrow">SUPPORT</div><h1 class="h1">How can we help?</h1>
+  <div class="sup-grid">
+    <a href="#" class="card sup" data-open="service"><%- icon('tool', 26) %><b>Request a service</b><span>Book a technician — get a ticket number instantly.</span></a>
+    <a href="#" class="card sup" data-open="enquiry" data-form="Support — quotation"><%- icon('quote', 26) %><b>Request a quotation</b><span>Reply on WhatsApp within 30 minutes.</span></a>
+    <a href="/page/amc-plans" class="card sup"><%- icon('shield', 26) %><b>AMC plans</b><span>Preventive visits &amp; priority support.</span></a>
+    <a href="/page/warranty" class="card sup"><%- icon('doc', 26) %><b>Warranty &amp; returns</b><span>We handle warranty claims end-to-end.</span></a>
+    <a href="https://wa.me/<%= waNum %>" target="_blank" rel="noopener" class="card sup"><%- icon('wa', 26) %><b>WhatsApp support</b><span>Chat with our service desk.</span></a>
+    <a href="/contact" class="card sup"><%- icon('pin', 26) %><b>Visit showroom</b><span><%= s.city %> · <%= s.timings %></span></a>
+  </div>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,14 @@
+<%- include('partials/header') %>
+<div class="wrap sec-sm narrow">
+  <div class="eyebrow">PAYMENT · <%= inv.number %></div>
+  <h1 class="h2"><%= inv.cname %></h1>
+  <div class="card paybox">
+    <div class="crow"><div><small>Invoice total</small><b>₹<%= inr(inv.total) %></b></div><div><small>Paid</small><b>₹<%= inr(inv.paid) %></b></div><div><small>Balance due</small><b class="big">₹<%= inr(due) %></b></div></div>
+    <% if (due <= 1) { %><p class="b-green">Fully paid — thank you! 🙏</p>
+    <% } else if (upi) { %><a class="btn btn-primary btn-block" href="<%= upi %>">Pay ₹<%= inr(due) %> by UPI app</a><p class="muted small center">UPI ID: <b><%= s.upi_id %></b> · After paying, share the screenshot on WhatsApp.</p>
+    <% } else { %><p class="muted">Please contact us for payment details.</p><% } %>
+    <% if (s.bank_details) { %><p class="small muted">Bank transfer: <%= s.bank_details %></p><% } %>
+    <a class="btn btn-wa btn-block" href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Payment for ' + inv.number) %>" target="_blank"><%- icon('wa', 16) %> Send payment screenshot</a>
+  </div>
+</div>
+<%- include('partials/footer') %>
