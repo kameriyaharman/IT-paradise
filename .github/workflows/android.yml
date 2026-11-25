@@ -28,7 +28,8 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - uses: android-actions/setup-android@v3
+      - name: Android SDK (preinstalled on runner)
+        run: echo "ANDROID_HOME=$ANDROID_HOME"; ls $ANDROID_HOME/platforms || true
 
       - name: Install Capacitor
         working-directory: mobile
