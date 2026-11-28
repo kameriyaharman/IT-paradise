@@ -1,21 +1,21 @@
 <%- include('partials/header') %>
-<div class="wrap about">
-  <section>
-    <div class="eyebrow">ABOUT IT PARADISE</div>
-    <h1 class="h1">Trusted since 2006</h1>
+<section class="page-hero"><div class="wrap">
+  <nav class="crumbs"><a href="/">Home</a> <%- icon('right', 12) %> <span>About Us</span></nav>
+  <div class="eyebrow">ABOUT IT PARADISE</div>
+  <h1 class="h1">Trusted Since <%= s.stat_years || '2006' %></h1>
+  <p class="lead"><%= s.tagline || 'Technology, integrated.' %> — one partner for computing, security, networking, power and display in <%= s.city || 'Bhilwara, Rajasthan' %>.</p>
+</div></section>
+<div class="wrap about2">
+  <div class="about-story">
     <% (s.about_text || '').split(/\n\n+/).forEach(par => { %><p class="lead"><%= par %></p><% }) %>
-    <div class="nums"><div><small>Since</small><b><%= s.stat_years || '2006' %></b></div><div><small>Installations</small><b><%= s.stat_installs || '5,000+' %></b></div><div><small>Sectors</small><b><%= s.stat_sectors || '6' %></b></div></div>
-    <div class="values"><div><%- icon('chat', 20) %><b>Understand.</b><span>We start with your need, not a product list.</span></div><div><%- icon('tool', 20) %><b>Integrate.</b><span>Solutions, not just boxes — one connected ecosystem.</span></div><div><%- icon('headset', 20) %><b>Support.</b><span>One point of contact to keep systems working.</span></div></div>
-    <h3 class="h3 mt">Brands we work with</h3>
-    <div class="brand-grid"><% brands.forEach(b => { %><div class="brand"><% if (b.logo_id) { %><img src="/media/<%= b.logo_id %>" alt="<%= b.name %>"><% } else { %><%= b.name %><% } %></div><% }) %></div>
-  </section>
-  <aside class="contact card" id="contact">
-    <% const rows = [['Sales', s.phone_sales, 'tel:' + s.phone_sales, 'phone'], ['WhatsApp', s.phone_whatsapp || s.phone_sales, 'https://wa.me/' + waNum, 'wa'], ['Service desk', s.phone_service || s.phone_sales, 'tel:' + (s.phone_service || s.phone_sales), 'headset'], ['Email', s.email, 'mailto:' + s.email, 'mail'], ['Showroom', s.address || s.city, null, 'pin'], ['Timings', s.timings, null, 'clock']]; %>
-    <% rows.forEach(([l, v, href, ic]) => { if (!v) return; %><div class="crow"><span class="cic"><%- icon(ic, 18) %></span><div><small><%= l %></small><% if (href) { %><a href="<%= href %>"><%= v %></a><% } else { %><b><%= v %></b><% } %></div></div><% }) %>
-    <iframe class="map" title="Map" loading="lazy" src="https://www.google.com/maps?q=<%= encodeURIComponent(s.map_query || 'IT Paradise Bhilwara') %>&output=embed"></iframe>
-    <form class="qform" data-api="/api/public/enquiry"><input type="hidden" name="form" value="Contact page"><input type="text" name="website" class="hp" tabindex="-1" autocomplete="off">
-      <div class="g2"><label>Name<input name="name" required></label><label>Mobile<input name="mobile" required inputmode="tel"></label></div>
-      <label>Message<input name="message" placeholder="How can we help?"></label><button class="btn btn-primary btn-block">Contact our team</button><p class="merr" hidden></p></form>
-  </aside>
+  </div>
+  <div class="nums"><div><small>Serving since</small><b><%= s.stat_years || '2006' %></b></div><div><small>Installations</small><b><%= s.stat_installs || '5,000+' %></b></div><div><small>Products</small><b><%= s.stat_products || '400+' %></b></div><div><small>Sectors served</small><b><%= s.stat_sectors || '6' %></b></div></div>
+  <h2 class="h2 center mt">Understand. Integrate. Support.</h2>
+  <div class="values"><div><%- icon('chat', 22) %><b>Understand</b><span>We start with your need, not a product list — a site visit and honest advice.</span></div><div><%- icon('tool', 22) %><b>Integrate</b><span>Solutions, not just boxes — computing, security and networking planned as one ecosystem.</span></div><div><%- icon('headset', 22) %><b>Support</b><span>One point of contact, own technicians, AMC and quick service.</span></div></div>
+  <h2 class="h2 center mt">Industries We Serve</h2>
+  <div class="sectors"><% sectors.forEach(x => { %><a href="/solutions/<%= x.slug %>" class="sector"><span class="sic"><%- icon(x.icon, 26) %></span><b><%= x.name %></b><small>See Solution <%- icon('arrow', 12) %></small></a><% }) %></div>
+  <% if (brands.length) { %><h2 class="h2 center mt">Brands We Work With</h2>
+  <div class="brand-grid big"><% brands.forEach(b => { %><div class="brand"><% if (b.logo_id) { %><img src="/media/<%= b.logo_id %>" alt="<%= b.name %>"><% } else { %><%= b.name %><% } %></div><% }) %></div><% } %>
+  <div class="cta-band card"><div><h3>Let’s build what’s next</h3><p class="muted">Your next project starts with a conversation.</p></div><div class="row-btns"><a href="/contact" class="btn btn-primary"><%- icon('phone', 16) %> Contact Us</a><a href="#" class="btn btn-outline" data-open="enquiry" data-need="1" data-form="About page CTA"><%- icon('quote', 16) %> Get a Quote</a></div></div>
 </div>
 <%- include('partials/footer') %>

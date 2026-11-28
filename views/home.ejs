@@ -1,12 +1,12 @@
 <%- include('partials/header') %>
 <section class="hero"><div class="hero-bg" aria-hidden="true"><i></i><i></i><i></i><b></b></div><div class="wrap hero-in">
   <div class="hero-copy">
-    <div class="eyebrow light">YOUR TECHNOLOGY. OUR EXPERTISE.</div>
-    <h1>Technology.<br><span>Integrated.</span></h1>
-    <p>Computers, CCTV, networking, attendance, power backup and display — supplied, installed and supported by one trusted partner.</p>
+    <div class="eyebrow light"><%= s.hero_eyebrow || 'YOUR TECHNOLOGY. OUR EXPERTISE.' %></div>
+    <h1><%= s.hero_title_1 || 'Technology.' %><br><span><%= s.hero_title_2 || 'Integrated.' %></span></h1>
+    <p><%= s.hero_sub || 'Computers, CCTV, networking, attendance, power backup and display — supplied, installed and supported by one trusted partner.' %></p>
     <div class="hero-btns">
-      <a href="/products" class="btn btn-primary"><%- icon('arrow', 16) %> Shop products</a>
-      <a href="#quote" class="btn btn-ghost"><%- icon('quote', 16) %> Get a free quote</a>
+      <a href="/products" class="btn btn-primary"><%- icon('arrow', 16) %> Shop Products</a>
+      <a href="#quote" class="btn btn-ghost"><%- icon('quote', 16) %> Get a Free Quote</a>
       <a href="https://wa.me/<%= waNum %>" target="_blank" rel="noopener" class="btn btn-wa"><%- icon('wa', 16) %> WhatsApp</a>
     </div>
     <div class="stats">
@@ -16,6 +16,7 @@
       <div><b><%= s.stat_sectors || '6' %></b><span>Sectors served</span></div>
     </div>
   </div>
+  <% if ((s.hero_style || 'laptop') === 'image' && s.hero_image_id) { %><div class="hero-img"><img src="/media/<%= s.hero_image_id %>" alt=""></div><% } else if ((s.hero_style || 'laptop') === 'laptop') { %>
   <div class="lap-stage" aria-hidden="true">
     <div class="lap-glow"></div>
     <div class="lap">
@@ -50,12 +51,11 @@
     <a href="/products/access-attendance" class="orb o3"><%- icon('fingerprint', 18) %><span>Attendance</span></a>
     <a href="/products/power-backup" class="orb o4"><%- icon('bolt', 18) %><span>UPS</span></a>
     <a href="/products/print-display" class="orb o5"><%- icon('printer', 18) %><span>Print</span></a>
-  </div>
+  </div><% } %>
 </div></section>
 
-<% if (banners.length) { %><section class="banners wrap"><% banners.forEach(b => { %><a class="banner" href="<%= b.link || '#' %>"><% if (b.image_id) { %><img src="/media/<%= b.image_id %>" alt="<%= b.title %>" loading="lazy"><% } %><div><b><%= b.title %></b><span><%= b.subtitle %></span></div></a><% }) %></section><% } %>
-
-<section class="sec"><div class="wrap">
+<% const S = { banners: () => { %><% if (banners.length) { %><section class="banners wrap"><% banners.forEach(b => { %><a class="banner" href="<%= b.link || '#' %>"><% if (b.image_id) { %><img src="/media/<%= b.image_id %>" alt="<%= b.title %>" loading="lazy"><% } %><div><b><%= b.title %></b><span><%= b.subtitle %></span></div></a><% }) %></section><% } %>
+<% }, categories: () => { %><section class="sec"><div class="wrap">
   <div class="eyebrow center">SHOP BY CATEGORY</div>
   <h2 class="h2 center">Everything your home &amp; business needs</h2>
   <div class="cats">
@@ -66,22 +66,29 @@
   </div>
 </div></section>
 
-<section class="sec sec-tint"><div class="wrap">
+<% }, industries: () => { %><section class="sec sec-sol" id="solutions"><div class="wrap">
+  <div class="eyebrow center">SOLUTIONS</div>
+  <h2 class="h2 center">Solutions by Industry &amp; by Project</h2>
+  <div class="center"><div class="pills sol-switch" role="tablist"><button class="on" data-sw="ind">By Industry</button><button data-sw="proj">By Project</button></div></div>
+  <div class="ind-grid" data-pane="ind"><% sectors.forEach(x => { %>
+    <a href="/solutions/<%= x.slug %>" class="ind-card"><div class="ind-top"><span class="sic"><%- icon(x.icon, 24) %></span><b><%= x.name %></b></div>
+      <p><%= x.headline %></p><ul><% (x.packages || []).slice(0,3).forEach(k => { %><li><%- icon('check', 13) %> <%= k.t %></li><% }) %></ul><span class="more">View Solution <%- icon('arrow', 13) %></span></a>
+  <% }) %></div>
+  <div class="proj-grid" data-pane="proj" hidden><% projects.forEach(pj => { %>
+    <div class="proj-card"><div class="proj-img"><%- art(pj.art) %></div><b><%= pj.t %></b><p><%= pj.d %></p>
+      <div class="proj-btns"><button class="btn btn-primary btn-sm" data-open="enquiry" data-need="1" data-needval="Project: <%= pj.t %>" data-form="Project solution — <%= pj.t %>"><%- icon('quote', 14) %> Get Project Quote</button><% if (pj.link) { %><a class="btn btn-outline btn-sm" href="<%= pj.link %>">Products</a><% } %></div></div>
+  <% }) %></div>
+</div></section>
+<% }, best: () => { %><section class="sec sec-tint"><div class="wrap">
   <div class="sec-head">
     <div><div class="eyebrow">BEST SELLERS</div><h2 class="h2">Most enquired products</h2></div>
-    <div class="pills" data-filter="best"><button class="on" data-f="">All</button><button data-f="Business computing">Computing</button><button data-f="Video surveillance">CCTV</button><button data-f="Enterprise networking">Networking</button><button data-f="Power backup">Power</button></div>
+    <div class="pills" data-filter="best"><button class="on" data-f="">All</button><button data-f="Business Computing">Computing</button><button data-f="Video Surveillance">CCTV</button><button data-f="Enterprise Networking">Networking</button><button data-f="Power Backup">Power</button></div>
   </div>
   <div class="grid5" id="best"><% best.forEach(p => { %><div data-cat="<%= p.cat %>"><%- include('partials/card', { p }) %></div><% }) %></div>
-  <div class="center mt"><a href="/products" class="btn btn-outline"><%- icon('arrow', 16) %> View all <%= s.stat_products || '400+' %> products</a></div>
+  <div class="center mt"><a href="/products" class="btn btn-outline"><%- icon('arrow', 16) %> View All <%= s.stat_products || '400+' %> products</a></div>
 </div></section>
 
-<section class="sec"><div class="wrap">
-  <div class="eyebrow center">SOLUTIONS BY SECTOR</div>
-  <h2 class="h2 center">Complete setups, one partner</h2>
-  <div class="sectors"><% sectors.forEach(x => { %><a href="/solutions/<%= x.slug %>" class="sector"><span class="sic"><%- icon(x.icon, 26) %></span><b><%= x.name %></b><small>See solution <%- icon('arrow', 12) %></small></a><% }) %></div>
-</div></section>
-
-<section class="sec sec-navy"><div class="wrap">
+<% }, how: () => { %><section class="sec sec-navy"><div class="wrap">
   <div class="eyebrow center light">HOW WE WORK</div>
   <h2 class="h2 center light">Assess. Supply. Integrate. Support.</h2>
   <div class="steps">
@@ -93,7 +100,7 @@
   </div>
 </div></section>
 
-<section class="sec" id="quote"><div class="wrap quote-blk">
+<% }, quote: () => { %><section class="sec" id="quote"><div class="wrap quote-blk">
   <div>
     <div class="eyebrow">GET A QUOTE IN 30 MINUTES</div>
     <h2 class="h2">Tell us what you need</h2>
@@ -108,4 +115,6 @@
     <p class="merr" hidden></p>
   </form>
 </div></section>
+<% } }; %>
+<% homeSections.filter(x => x.on).forEach(x => { if (S[x.k]) S[x.k](); }) %>
 <%- include('partials/footer') %>

@@ -25,6 +25,11 @@ const SOURCE_LABEL = {
   linkedin: 'LinkedIn', google: 'Google', email: 'Email', call: 'Calls', walkin: 'Walk-in', reference: 'Reference', manual: 'Manual',
 };
 
+function cleanUtm(u) {
+  if (!u || typeof u !== 'object') return {};
+  const o = {}; for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid', 'landing']) if (u[k]) o[k] = String(u[k]).slice(0, 300);
+  return o;
+}
 function scoreLead(d) {
   let s = 40;
   if (['website', 'whatsapp', 'indiamart', 'google'].includes(d.source)) s += 10;
@@ -109,12 +114,13 @@ async function captureLead(d) {
   const score = scoreLead({ ...d, source });
   const priority = score >= 75 ? 'hot' : score >= 50 ? 'warm' : 'cold';
   const lead = await one(`INSERT INTO leads(customer_id,name,company,phone,email,city,need,category,product_id,quantity,budget,source,source_detail,
-     owner_id,score,priority,value,external_id,next_followup_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18, now() + interval '30 minutes') RETURNING *`,
+     owner_id,score,priority,value,external_id,next_followup_at,utm,page_url,referrer) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18, now() + interval '30 minutes',$19,$20,$21) RETURNING *`,
     [customer.id, d.name || customer.name || 'Unknown', d.company || null, phone || null, email, d.city || null, d.need || null, category,
       d.product_id || null, d.quantity || null, d.budget || null, source, d.source_detail || null, owner, score, priority, +d.value || 0,
-      d.external_id ? String(d.external_id) : null]);
+      d.external_id ? String(d.external_id) : null, cleanUtm(d.utm), d.page_url ? String(d.page_url).slice(0, 500) : null, d.referrer ? String(d.referrer).slice(0, 500) : null]);
 
-  await addActivity(lead.id, 'system', `Lead from ${SOURCE_LABEL[source] || source}${d.source_detail ? ' · ' + d.source_detail : ''}`, d.userId, { source });
+  const u = cleanUtm(d.utm);
+  await addActivity(lead.id, 'system', `Lead from ${SOURCE_LABEL[source] || source}${d.source_detail ? ' · ' + d.source_detail : ''}${u.utm_source ? ` · campaign: ${u.utm_source}/${u.utm_medium || '-'}/${u.utm_campaign || '-'}` : ''}${d.page_url ? ' · page: ' + String(d.page_url).replace(/^https?:\/\/[^/]+/, '') : ''}`, d.userId, { source, utm: u });
   if (owner) {
     const u = await one('SELECT name FROM users WHERE id=$1', [owner]);
     await addActivity(lead.id, 'system', d.owner_id ? `Assigned to ${u.name}` : `Auto-assigned to ${u.name} (round-robin)`);

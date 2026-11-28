@@ -22,12 +22,13 @@ export function Quotations({ user }) {
 export function QuoteEditor({ id, user, mobile }) {
   const isNew = id === 'new';
   const [qt, setQt] = useState(null); const [items, setItems] = useState([]); const [cust, setCust] = useState(null);
-  const [meta, bindMeta, setMeta] = useForm({ template: '', validity_days: 7, payment_terms: '50% advance', warranty: '1 year', discount: 0, notes: '' });
+  const [meta, bindMeta, setMeta] = useForm({ template: '', validity_days: 7, payment_terms: '50% advance', warranty: '1 year', discount: 0, notes: '', terms: '', delivery_terms: '' });
   const [lead, setLead] = useState(null); const [pubUrl, setPub] = useState('');
   const tpl = useApi('quote-templates');
   const [newCust, bindNC] = useForm({});
   const load = async () => {
     if (isNew) {
+      api('quote-defaults').then(dd => setMeta(m => ({ ...m, terms: m.terms || dd.terms, delivery_terms: m.delivery_terms || dd.delivery_terms }))).catch(() => { });
       const lid = qparam('lead'), cid = qparam('customer');
       if (lid) { const d = await api('leads/' + lid); setLead(d.lead); setCust({ name: d.lead.name, company: d.lead.company, phone: d.lead.phone });
         if (d.product) setItems([{ product_id: d.product.id, description: d.product.name, qty: parseInt(d.lead.quantity) || 1, rate: +d.product.price, gst_rate: 18 }]); }
@@ -37,7 +38,7 @@ export function QuoteEditor({ id, user, mobile }) {
     const d = await api('quotations/' + id);
     setQt(d.quotation); setCust(d.customer); setPub(d.public_url);
     setItems(d.items.map(i => ({ ...i, qty: +i.qty, rate: +i.rate, gst_rate: +i.gst_rate })));
-    setMeta({ template: d.quotation.template || '', validity_days: d.quotation.validity_days, payment_terms: d.quotation.payment_terms, warranty: d.quotation.warranty, discount: +d.quotation.discount, notes: d.quotation.notes || '' });
+    setMeta({ template: d.quotation.template || '', validity_days: d.quotation.validity_days, payment_terms: d.quotation.payment_terms, warranty: d.quotation.warranty, discount: +d.quotation.discount, notes: d.quotation.notes || '', terms: d.quotation.terms || '', delivery_terms: d.quotation.delivery_terms || '' });
   };
   useEffect(() => { load().catch(e => toast(e.message, 'err')); }, [id]);
   const locked = qt && ['converted'].includes(qt.status);
@@ -89,7 +90,8 @@ export function QuoteEditor({ id, user, mobile }) {
           <${F} l="Template"><select disabled=${locked} value="" onChange=${(e) => applyTpl(e.target.value)}><option value="">${meta.template || 'Choose package…'}</option>${(tpl.data || []).map(x => html`<option value=${x.id}>${x.name}</option>`)}</select></${F}>
           <${F} l="Validity (days)"><input type="number" disabled=${locked} ...${bindMeta('validity_days')}/></${F}>
           <${F} l="Payment"><select disabled=${locked} ...${bindMeta('payment_terms')}>${['50% advance', '100% advance', '30% advance', 'On delivery', '15 days credit', '30 days credit'].map(x => html`<option>${x}</option>`)}</select></${F}>
-          <${F} l="Warranty"><input disabled=${locked} ...${bindMeta('warranty')}/></${F}><${F} l="Notes" full><input disabled=${locked} ...${bindMeta('notes')}/></${F}>
+          <${F} l="Warranty"><input disabled=${locked} ...${bindMeta('warranty')}/></${F}><${F} l="Delivery terms"><input disabled=${locked} ...${bindMeta('delivery_terms')}/></${F}><${F} l="Notes" full><input disabled=${locked} ...${bindMeta('notes')}/></${F}>
+          <${F} l="Terms & conditions (printed on PDF — edit for this quotation)" full><textarea rows="7" class="tc" disabled=${locked} ...${bindMeta('terms')}></textarea></${F}>
         </div>
         ${!locked && html`<${Btn} kind="navy" onClick=${save}>${isNew ? 'Save quotation' : 'Save changes'}</${Btn}>`}
         ${qt && html`<div class="qbtns"><${Btn} kind="ghost" icon="doc" onClick=${() => openFile(`/api/quotations/${id}/pdf`)}>PDF</${Btn}>

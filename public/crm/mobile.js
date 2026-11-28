@@ -23,10 +23,12 @@ function Attendance() {
   const act = async (k) => {
     let location = null;
     try { location = await new Promise((ok) => navigator.geolocation ? navigator.geolocation.getCurrentPosition(p => ok(p.coords.latitude.toFixed(5) + ',' + p.coords.longitude.toFixed(5)), () => ok(null), { timeout: 5000 }) : ok(null)); } catch (e) { }
-    setA(await run(() => api('attendance/' + k, { body: { location } }), k === 'in' ? 'Checked in ✓' : 'Checked out'));
+    const r = await run(() => api('attendance/' + k, { body: { location } }), k === 'in' ? 'Checked in ✓ — have a great day' : 'Checked out ✓');
+    setA(r); if (auth.me) auth.me.attendance = r; window.dispatchEvent(new Event('itp-att'));
   };
-  return html`<div class="att card">${a && a.check_in ? html`<span><${Ic} n="check" s=${16}/> In ${tm(a.check_in)}${a.check_out ? ' · Out ' + tm(a.check_out) : ''}</span>${!a.check_out && html`<${Btn} sm kind="ghost" onClick=${() => act('out')}>Check out</${Btn}>`}`
-    : html`<span class="muted">Not checked in</span><${Btn} sm kind="green" onClick=${() => act('in')}>Check in</${Btn}>`}</div>`;
+  return html`<div class=${'att card' + (a && a.check_in && !a.check_out ? ' on' : '')}><div><small>Attendance · ${new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</small>
+    ${a && a.check_in ? html`<b><${Ic} n="check" s=${15}/> In ${tm(a.check_in)}${a.check_out ? ' · Out ' + tm(a.check_out) : ''}</b>` : html`<b class="muted">Not checked in</b>`}</div>
+    ${!a || !a.check_in ? html`<${Btn} kind="green" icon="pin" onClick=${() => act('in')}>Check in</${Btn}>` : !a.check_out ? html`<${Btn} kind="ghost" icon="logout" onClick=${() => act('out')}>Check out</${Btn}>` : html`<span class="badge t-green">Day complete</span>`}</div>`;
 }
 
 // ---------- Sales ----------
@@ -68,10 +70,10 @@ function MQuotes({ user }) { const q = useApi('quotations'); return html`<div><a
 // ---------- Technician ----------
 function TechJobs({ user }) {
   const d = useApi('dashboard');
-  return html`<div><${Attendance}/><${Load} q=${d}>${(x) => { const open = x.jobs.filter(j => j.status !== 'completed'); const done = x.jobs.filter(j => j.status === 'completed');
+  return html`<div><${Attendance}/><${Load} q=${d}>${(x) => { const DN = ['completed', 'delivered', 'ready']; const open = x.jobs.filter(j => !DN.includes(j.status)); const done = x.jobs.filter(j => DN.includes(j.status));
     return html`<div class="mk3"><div class="mk"><b>${open.length}</b><small>Open jobs</small></div><div class="mk"><b>${x.completed_month}</b><small>Done (month)</small></div><div class="mk"><b>${inr(x.collected_month, 1)}</b><small>Collected</small></div></div>
-    <h3 class="msec">Assigned jobs</h3>${open.length ? open.map(j => html`<a class="mrow card" href=${'#/jobs/' + j.id}><span class="mic"><${Ic} n=${j.kind === 'installation' ? 'box' : 'tool'} s=${18}/></span><div><b>${j.title || j.issue}</b><small>${j.number} · ${j.cname || ''}</small><small class="muted">${j.address || ''}${j.scheduled_at ? ' · ' + dt(j.scheduled_at, 1) : ''}</small></div><${Badge} s=${j.status}/></a>`) : html`<${Empty}>No open jobs 🎉<//>`}
-    ${done.length > 0 && html`<h3 class="msec">Completed</h3>${done.map(j => html`<a class="mrow card dim" href=${'#/jobs/' + j.id}><div><b>${j.title || j.issue}</b><small>${j.number}</small></div><${Badge} s=${j.status}/></a>`)}`}`; }}<//></div>`;
+    <h3 class="msec">Assigned jobs</h3>${open.length ? open.map(j => html`<a class="mrow card" href=${'#/jobs/' + j.id}><span class="mic"><${Ic} n=${j.kind === 'installation' ? 'box' : 'tool'} s=${18}/></span><div><b>${j.cname || 'Customer'}</b><small>${j.title || j.issue}</small><small class="muted">${j.number}${j.address ? ' · ' + j.address : ''}${j.scheduled_at ? ' · ' + dt(j.scheduled_at, 1) : ''}</small></div><${Badge} s=${j.status}/></a>`) : html`<${Empty}>No open jobs 🎉<//>`}
+    ${done.length > 0 && html`<h3 class="msec">Completed</h3>${done.map(j => html`<a class="mrow card dim" href=${'#/jobs/' + j.id}><div><b>${j.cname || 'Customer'}</b><small>${j.title || j.issue} · ${j.number}</small></div><${Badge} s=${j.status}/></a>`)}`}`; }}<//></div>`;
 }
 function ScanPage() {
   const [scan, setScan] = useState(false); const [s, setS] = useState(''); const [r, setR] = useState(null);
@@ -93,7 +95,7 @@ function OwnerHome({ user }) {
       <h3 class="msec">Leads by source</h3><div class="card pad">${x.sources.map(s => html`<div class="lrow"><span>${SOURCES[s.source]}</span><b>${s.c}</b></div>`)}</div>`}<//></div>`;
 }
 function More({ user }) {
-  const L = [['/orders', 'Orders & invoices', 'cart'], ['/payments', 'Payments & dues', 'rupee'], ['/quotes', 'Quotations', 'doc'], ['/followups', 'Follow-ups', 'phone'], ['/inbox', 'WhatsApp inbox', 'chat'], ['/stock', 'Stock & purchase', 'box'], ['/team', 'Team & targets', 'users'], ['/customers', 'Customers', 'user'], ['/me', 'My account', 'gear']];
+  const L = [['/team', 'Team, attendance & live location', 'users'], ['/service', 'Service & walk-in repairs', 'tool'], ['/orders', 'Orders & invoices', 'cart'], ['/payments', 'Payments & dues', 'rupee'], ['/quotes', 'Quotations', 'doc'], ['/followups', 'Follow-ups', 'phone'], ['/inbox', 'WhatsApp inbox', 'chat'], ['/stock', 'Stock & purchase', 'box'], ['/customers', 'Customers', 'user'], ['/me', 'My account', 'gear']];
   return html`<div>${L.map(([p, l, i]) => html`<a class="mrow card" href=${'#' + p}><span class="mic"><${Ic} n=${i} s=${18}/></span><div><b>${l}</b></div><${Ic} n="right" s=${16}/></a>`)}
     <a class="mrow card" href="/crm"><span class="mic"><${Ic} n="ext" s=${18}/></span><div><b>Open full CRM & admin panel</b><small>Reports, automations, website admin, settings</small></div></a></div>`;
 }
@@ -134,7 +136,20 @@ function Page({ route, user, onLogout }) {
   }
 }
 
+// Live location while checked in (foreground). Native background tracking needs a background-location plugin + Play Store declaration.
+function useTracker(user) {
+  useEffect(() => {
+    if (user.role === 'owner' || !navigator.geolocation) return;
+    let timer = null, every = 5;
+    const send = (kind, note) => navigator.geolocation.getCurrentPosition((p) => api('location', { body: { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: Math.round(p.coords.accuracy), kind: kind || 'ping', note } }).then(r => { if (r && r.interval) every = r.interval; }).catch(() => { }), () => { }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+    window.ITP_PING = send;
+    const tick = () => { const a = auth.me && auth.me.attendance; if (a && a.check_in && !a.check_out && document.visibilityState === 'visible') send('ping'); clearTimeout(timer); timer = setTimeout(tick, every * 60000); };
+    tick(); const onAtt = () => tick(); window.addEventListener('itp-att', onAtt); document.addEventListener('visibilitychange', onAtt);
+    return () => { clearTimeout(timer); window.removeEventListener('itp-att', onAtt); document.removeEventListener('visibilitychange', onAtt); };
+  }, [user.id]);
+}
 export function MobileApp({ user, route, onLogout }) {
+  useTracker(user);
   const tabs = TABS[user.role] || TABS.sales; const base = '/' + (route.split(/[/?]/)[1] || '');
   // Desktop-style deep links (#/quotations/12) map to mobile screens
   useEffect(() => { window.scrollTo(0, 0); }, [route]);

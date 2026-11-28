@@ -6,16 +6,21 @@ const { icon } = require('../icons');
 const pdf = require('../pdf');
 
 const r = express.Router();
+const DEFAULT_SECTIONS = [{ k: 'banners', on: true }, { k: 'categories', on: true }, { k: 'industries', on: true }, { k: 'best', on: true }, { k: 'how', on: true }, { k: 'quote', on: true }];
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const inr = (n) => Number(n || 0).toLocaleString('en-IN');
 
 async function base(req) {
   const s = await getSettings();
   const categories = await q(`SELECT c.*, (SELECT count(*) FROM products p WHERE p.category_id=c.id AND p.published)::int count FROM categories c ORDER BY sort`);
-  const sectors = await q('SELECT slug,name,icon FROM sectors ORDER BY sort');
+  const sectors = await q('SELECT slug,name,icon,headline,packages FROM sectors ORDER BY sort');
+  const J = (v, d) => { try { return v ? JSON.parse(v) : d; } catch (e) { return d; } };
   const wa = (s.phone_whatsapp || s.phone_sales || '').replace(/\D/g, '');
   return {
     s, categories, sectors, art, icon, inr, path: req.path,
+    theme: { primary: s.theme_primary || '#1E9BE0', secondary: s.theme_secondary || '#1373C9', navy: s.theme_navy || '#0B1F44', font: s.heading_font || 'Poppins', bodyFont: s.body_font || 'Poppins' },
+    logoUrl: s.logo_id ? '/media/' + s.logo_id : '/static/img/logo.svg', logoText: s.logo_show_text !== '0',
+    homeSections: J(s.home_sections, DEFAULT_SECTIONS), projects: J(s.project_solutions, []),
     waNum: wa.length === 10 ? '91' + wa : wa,
     canonical: (s.public_url || '') + req.path,
     img: (p, cls) => p.image_ids && p.image_ids.length ? `<img class="art ${cls || ''}" src="/media/${p.image_ids[0]}" alt="${String(p.name).replace(/"/g, '&quot;')}" loading="lazy">` : art(p.art, cls),
@@ -81,10 +86,14 @@ r.get('/brands', h(async (req, res) => {
   const brands = await q(`SELECT b.*, (SELECT count(*) FROM products p WHERE p.brand_id=b.id AND p.published)::int count FROM brands b ORDER BY sort, name`);
   res.render('brands', { ...b, brands, title: 'Brands we work with | IT Paradise', desc: 'Authorised and trusted technology brands supplied and supported by IT Paradise, Bhilwara.' });
 }));
-r.get(['/about', '/contact'], h(async (req, res) => {
+r.get('/about', h(async (req, res) => {
   const b = await base(req);
-  const brands = await q('SELECT * FROM brands ORDER BY sort, name LIMIT 12');
-  res.render('about', { ...b, brands, title: req.path === '/contact' ? 'Contact IT Paradise — Bhilwara' : 'About IT Paradise — Trusted since 2006', desc: 'IT Paradise is a technology, security and system-integration partner for homes and businesses in Bhilwara, Rajasthan.' });
+  const brands = await q('SELECT * FROM brands ORDER BY sort, name LIMIT 18');
+  res.render('about', { ...b, brands, title: 'About IT Paradise — Trusted Since 2006', desc: 'IT Paradise is a technology, security and system-integration partner for homes and businesses in Bhilwara, Rajasthan.' });
+}));
+r.get('/contact', h(async (req, res) => {
+  const b = await base(req);
+  res.render('contact', { ...b, title: 'Contact IT Paradise — Bhilwara', desc: 'Call, WhatsApp, email or visit IT Paradise in Bhilwara for sales, service and AMC.' });
 }));
 r.get('/support', h(async (req, res) => {
   const b = await base(req);
@@ -121,11 +130,22 @@ r.get('/r/:ref', h(async (req, res, next) => {
   if (!p || (p.number || '').slice(-4) !== tail) return next();
   await pdf.receiptPdf(res, p.id);
 }));
+r.get('/track', h(async (req, res) => {
+  const b = await base(req);
+  let job = null, err = null;
+  if (req.query.ticket) {
+    const t = String(req.query.ticket).trim().toUpperCase(); const m = String(req.query.mobile || '').replace(/\D/g, '').slice(-10);
+    job = await one(`SELECT j.*, u.name tech FROM jobs j LEFT JOIN users u ON u.id=j.technician_id LEFT JOIN customers c ON c.id=j.customer_id
+      WHERE upper(j.number)=$1 AND ($2='' OR right(regexp_replace(coalesce(j.phone,c.phone,''),'\\D','','g'),10)=$2)`, [t, m]);
+    if (!job) err = 'No ticket found for this number' + (m ? ' and mobile' : '') + '. Please check and try again.';
+  }
+  res.render('track', { ...b, job, err, query: req.query, title: 'Track Service Ticket | IT Paradise', desc: 'Track the status of your repair or service ticket with IT Paradise using your ticket number.' });
+}));
 r.get('/track/:token', h(async (req, res, next) => {
   const b = await base(req);
-  const job = await one(`SELECT j.number,j.kind,j.title,j.issue,j.status,j.scheduled_at,j.completed_at,j.created_at,u.name tech, u.phone tech_phone FROM jobs j LEFT JOIN users u ON u.id=j.technician_id WHERE track_token=$1`, [req.params.token]);
+  const job = await one(`SELECT j.*, u.name tech FROM jobs j LEFT JOIN users u ON u.id=j.technician_id WHERE track_token=$1`, [req.params.token]);
   if (!job) return next();
-  res.render('track', { ...b, job, title: `Track ${job.number} | IT Paradise`, desc: '' });
+  res.render('track', { ...b, job, err: null, query: {}, title: `Track ${job.number} | IT Paradise`, desc: '' });
 }));
 r.get('/pay/:ref', h(async (req, res, next) => {
   const b = await base(req);
@@ -139,7 +159,7 @@ r.get('/pay/:ref', h(async (req, res, next) => {
 r.get('/robots.txt', h(async (req, res) => { const s = await getSettings(); res.type('text').send(`User-agent: *\nDisallow: /crm\nDisallow: /app\nDisallow: /api\nDisallow: /q/\nDisallow: /pay/\nDisallow: /track/\nSitemap: ${s.public_url || ''}/sitemap.xml\n`); }));
 r.get('/sitemap.xml', h(async (req, res) => {
   const s = await getSettings(); const u = s.public_url || '';
-  const urls = ['/', '/products', '/about', '/contact', '/support', '/brands', '/gallery',
+  const urls = ['/', '/products', '/about', '/contact', '/support', '/track', '/quote', '/brands', '/gallery',
     ...(await q('SELECT slug FROM categories')).map(c => '/products/' + c.slug), ...(await q('SELECT slug FROM sectors')).map(c => '/solutions/' + c.slug),
     ...(await q('SELECT slug FROM products WHERE published')).map(p => '/product/' + p.slug), ...(await q('SELECT slug FROM pages')).map(p => '/page/' + p.slug)];
   res.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(x => `<url><loc>${u}${x}</loc></url>`).join('')}</urlset>`);

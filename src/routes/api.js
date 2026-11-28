@@ -10,6 +10,7 @@ const pdf = require('../pdf');
 const { jobs: autoJobs } = require('../automations');
 
 const r = express.Router();
+const SLA_HOURS_ = { urgent: 4, high: 8, normal: 24, low: 72 };
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 8 * 1024 * 1024 } });
 const h = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 const OWNER = allow('owner');
@@ -41,10 +42,43 @@ r.post('/me/password', h(async (req, res) => {
   res.json({ ok: true });
 }));
 r.post('/attendance/:act', h(async (req, res) => {
-  if (req.params.act === 'in') await q(`INSERT INTO attendance(user_id,day,check_in,location) VALUES($1,CURRENT_DATE,now(),$2) ON CONFLICT(user_id,day) DO NOTHING`, [req.user.id, req.body.location || null]);
-  else await q(`UPDATE attendance SET check_out=now() WHERE user_id=$1 AND day=CURRENT_DATE`, [req.user.id]);
+  const loc = req.body.location || null;
+  if (req.params.act === 'in') await q(`INSERT INTO attendance(user_id,day,check_in,location) VALUES($1,CURRENT_DATE,now(),$2) ON CONFLICT(user_id,day) DO NOTHING`, [req.user.id, loc]);
+  else await q(`UPDATE attendance SET check_out=now(), out_location=$2 WHERE user_id=$1 AND day=CURRENT_DATE`, [req.user.id, loc]);
+  if (loc && /^-?[\d.]+,-?[\d.]+$/.test(loc)) { const [la, ln] = loc.split(',').map(Number); await q('INSERT INTO locations(user_id,lat,lng,kind) VALUES($1,$2,$3,$4)', [req.user.id, la, ln, req.params.act === 'in' ? 'check_in' : 'check_out']); }
   res.json(await one('SELECT * FROM attendance WHERE user_id=$1 AND day=CURRENT_DATE', [req.user.id]));
 }));
+// Live location pings from the staff app (while checked in)
+r.post('/location', h(async (req, res) => {
+  const s = await getSettings();
+  if (s.location_tracking === '0') return res.json({ ok: false, off: true });
+  const { lat, lng, accuracy, kind, note } = req.body;
+  if (!isFinite(+lat) || !isFinite(+lng)) return res.status(400).json({ error: 'lat/lng required' });
+  const last = await one('SELECT lat,lng,at FROM locations WHERE user_id=$1 ORDER BY at DESC LIMIT 1', [req.user.id]);
+  const moved = !last || Math.abs(last.lat - lat) + Math.abs(last.lng - lng) > 0.0003 || Date.now() - new Date(last.at) > 10 * 60000;
+  if (moved || kind !== 'ping') await q('INSERT INTO locations(user_id,lat,lng,accuracy,kind,note) VALUES($1,$2,$3,$4,$5,$6)', [req.user.id, +lat, +lng, accuracy ? +accuracy : null, kind || 'ping', note || null]);
+  res.json({ ok: true, interval: +(s.location_interval_min || 5) });
+}));
+r.get('/team/locations', OWNER, h(async (req, res) => {
+  res.json(await q(`SELECT u.id, u.name, u.role, l.lat, l.lng, l.at, l.kind, a.check_in, a.check_out,
+    (SELECT title FROM jobs j WHERE j.technician_id=u.id AND j.status IN ('on_the_way','in_progress') LIMIT 1) on_job
+    FROM users u LEFT JOIN LATERAL (SELECT * FROM locations x WHERE x.user_id=u.id ORDER BY at DESC LIMIT 1) l ON true
+    LEFT JOIN attendance a ON a.user_id=u.id AND a.day=CURRENT_DATE WHERE u.active AND u.role<>'owner' ORDER BY u.role, u.name`));
+}));
+r.get('/team/locations/:uid', OWNER, h(async (req, res) => {
+  const day = req.query.date || new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
+  res.json(await q(`SELECT lat,lng,at,kind,note,accuracy FROM locations WHERE user_id=$1 AND (at AT TIME ZONE 'Asia/Kolkata')::date=$2 ORDER BY at`, [req.params.uid, day]));
+}));
+r.get('/attendance', OWNER, h(async (req, res) => {
+  const from = req.query.from || new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10), to = req.query.to || new Date().toISOString().slice(0, 10);
+  const rows = await q(`SELECT a.*, u.name, u.role, round((extract(epoch FROM (coalesce(a.check_out, CASE WHEN a.day=CURRENT_DATE THEN now() END) - a.check_in))/3600)::numeric,1)::float hours
+    FROM attendance a JOIN users u ON u.id=a.user_id WHERE a.day BETWEEN $1 AND $2 ${req.query.user ? 'AND a.user_id=' + +req.query.user : ''} ORDER BY a.day DESC, u.name`, [from, to]);
+  if (req.query.format === 'csv') { res.setHeader('Content-Type', 'text/csv'); res.setHeader('Content-Disposition', `attachment; filename="attendance-${from}-to-${to}.csv"`); return res.send('\uFEFF' + toCsv(rows.map(r => ({ date: r.day, name: r.name, role: r.role, check_in: r.check_in, check_out: r.check_out, hours: r.hours, in_location: r.location, out_location: r.out_location })))); }
+  res.json(rows);
+}));
+r.get('/customers/:id/sites', OS, h(async (req, res) => res.json(await q('SELECT * FROM customer_sites WHERE customer_id=$1 ORDER BY id', [req.params.id]))));
+r.post('/customers/:id/sites', OS, h(async (req, res) => { const d = req.body; res.json(await one('INSERT INTO customer_sites(customer_id,name,address,city,contact,phone) VALUES($1,$2,$3,$4,$5,$6) RETURNING *', [req.params.id, d.name, d.address, d.city, d.contact, normPhone(d.phone) || null])); }));
+r.delete('/customers/:id/sites/:sid', OS, h(async (req, res) => { await q('DELETE FROM customer_sites WHERE id=$1 AND customer_id=$2', [req.params.sid, req.params.id]); res.json({ ok: true }); }));
 
 // ---------- Notifications ----------
 r.get('/notifications', h(async (req, res) => {
@@ -287,6 +321,7 @@ r.get('/products', h(async (req, res) => {
 }));
 
 // ---------- Quotations ----------
+r.get('/quote-defaults', OS, h(async (req, res) => { const st = await getSettings(); res.json({ terms: st.quote_terms || '', delivery_terms: st.delivery_terms || '' }); }));
 r.get('/quote-templates', OS, h(async (req, res) => res.json(await q('SELECT * FROM quote_templates ORDER BY name'))));
 r.post('/quote-templates', OWNER, h(async (req, res) => res.json(await one('INSERT INTO quote_templates(name,items) VALUES($1,$2) RETURNING *', [req.body.name, JSON.stringify(req.body.items || [])]))));
 r.delete('/quote-templates/:id', OWNER, h(async (req, res) => { await q('DELETE FROM quote_templates WHERE id=$1', [req.params.id]); res.json({ ok: true }); }));
@@ -429,13 +464,15 @@ r.get('/stock', OS, h(async (req, res) => {
   res.json({ rows, suggestions: sugg });
 }));
 r.post('/stock/adjust', OWNER, h(async (req, res) => {
-  const { product_id, qty, note } = req.body;
+  const { product_id, qty, note, reason, serial } = req.body;
   await q('UPDATE products SET stock=stock+$2 WHERE id=$1', [product_id, +qty]);
-  await q(`INSERT INTO stock_moves(product_id,qty,kind,note,user_id) VALUES($1,$2,'adjust',$3,$4)`, [product_id, +qty, note, req.user.id]);
+  await q(`INSERT INTO stock_moves(product_id,qty,kind,note,user_id,reason) VALUES($1,$2,'adjust',$3,$4,$5)`, [product_id, +qty, note, req.user.id, reason || null]);
+  if (serial) { const st = { defective: 'defective', returned: 'in_stock', replacement: 'replaced', damaged: 'defective' }[reason] || null;
+    if (st) await q(`INSERT INTO serials(serial,product_id,status) VALUES(upper($1),$2,$3) ON CONFLICT(serial) DO UPDATE SET status=$3`, [serial, product_id, st]); }
   await audit(req, 'adjust', 'stock', product_id, { qty, note });
   res.json({ ok: true });
 }));
-r.get('/stock/moves', OWNER, h(async (req, res) => res.json(await q('SELECT m.*, p.name FROM stock_moves m JOIN products p ON p.id=m.product_id ORDER BY m.id DESC LIMIT 200'))));
+r.get('/stock/moves', OWNER, h(async (req, res) => res.json(await q(`SELECT m.*, p.name FROM stock_moves m JOIN products p ON p.id=m.product_id ${req.query.reason ? 'WHERE m.reason=$1' : ''} ORDER BY m.id DESC LIMIT 300`, req.query.reason ? [req.query.reason] : []))));
 r.get('/suppliers', OWNER, h(async (req, res) => res.json(await q(`SELECT s.*, (SELECT coalesce(sum(total),0) FROM purchases p WHERE p.supplier_id=s.id) billed,
   (SELECT coalesce(sum(amount),0) FROM supplier_payments sp WHERE sp.supplier_id=s.id) paid FROM suppliers s ORDER BY name`))));
 r.post('/suppliers', OWNER, h(async (req, res) => { const d = req.body; res.json(await one('INSERT INTO suppliers(name,phone,email,gstin,address) VALUES($1,$2,$3,$4,$5) RETURNING *', [d.name, normPhone(d.phone) || null, d.email, d.gstin, d.address])); }));
@@ -483,6 +520,7 @@ r.get('/jobs', h(async (req, res) => {
   if (req.user.role === 'tech') w.push('j.technician_id=' + req.user.id);
   if (req.query.kind === 'installation') w.push(`j.kind='installation'`);
   else if (req.query.kind === 'service') w.push(`j.kind<>'installation'`);
+  else if (req.query.kind === 'carry_in') w.push(`j.kind='carry_in'`);
   const where = w.length ? 'WHERE ' + w.join(' AND ') : '';
   const rows = await q(`SELECT j.*, c.name cname, c.phone cphone, u.name tech, o.number order_no FROM jobs j LEFT JOIN customers c ON c.id=j.customer_id
     LEFT JOIN users u ON u.id=j.technician_id LEFT JOIN orders o ON o.id=j.order_id ${where} ORDER BY (j.status IN ('completed','closed','cancelled')), j.id DESC LIMIT 300`);
@@ -500,7 +538,9 @@ r.get('/jobs/:id', h(async (req, res) => {
   const order = j.order_id ? await one('SELECT o.number, o.total, (SELECT coalesce(sum(amount),0) FROM payments WHERE order_id=o.id) paid FROM orders o WHERE id=$1', [j.order_id]) : null;
   const tech = j.technician_id ? await one('SELECT id,name,phone FROM users WHERE id=$1', [j.technician_id]) : null;
   const history = c ? await q(`SELECT number,kind,title,issue,status,created_at FROM jobs WHERE customer_id=$1 AND id<>$2 ORDER BY id DESC LIMIT 10`, [c.id, j.id]) : [];
-  const out = { job: j, customer: c, items, serials, order, tech, history };
+  const parts = await q('SELECT * FROM job_parts WHERE job_id=$1 ORDER BY id', [j.id]);
+  const linked = await q('SELECT id, number, status, title FROM jobs WHERE parent_job_id=$1 OR id=$2', [j.id, j.parent_job_id || 0]);
+  const out = { job: j, customer: c, items, serials, order, tech, history, parts, linked };
   if (req.user.role === 'tech') delete out.job.otp; // technician must get OTP from customer
   res.json(out);
 }));
@@ -509,30 +549,80 @@ r.post('/jobs', OS, h(async (req, res) => {
   let custId = d.customer_id;
   if (!custId && d.phone) {
     const c = await one(`SELECT id FROM customers WHERE right(regexp_replace(coalesce(phone,''),'\\D','','g'),10)=$1`, [last10(d.phone)]);
-    custId = c ? c.id : (await one('INSERT INTO customers(name,phone,city,address) VALUES($1,$2,$3,$4) RETURNING id', [d.name || 'Customer', normPhone(d.phone), d.city, d.address])).id;
+    custId = c ? c.id : (await one('INSERT INTO customers(name,phone,city,address,company) VALUES($1,$2,$3,$4,$5) RETURNING id', [d.name || 'Customer', normPhone(d.phone), d.city, d.address, d.company || null])).id;
   }
-  // coverage auto: serial under warranty / AMC active
+  const kind = ['installation', 'service', 'preventive', 'carry_in'].includes(d.kind) ? d.kind : 'service';
+  const dev = d.device || {};
   let coverage = d.coverage || 'paid';
-  if (!d.coverage && d.serial) { const s = await one('SELECT warranty_until FROM serials WHERE upper(serial)=upper($1)', [d.serial]); if (s && new Date(s.warranty_until) >= new Date()) coverage = 'warranty'; }
+  const serial = d.serial || dev.serial;
+  if (!d.coverage && serial) { const s = await one('SELECT warranty_until FROM serials WHERE upper(serial)=upper($1)', [serial]); if (s && new Date(s.warranty_until) >= new Date()) coverage = 'warranty'; }
   if (!d.coverage && custId) { const a = await one(`SELECT id FROM amcs WHERE customer_id=$1 AND status='active' AND end_date>=CURRENT_DATE`, [custId]); if (a) coverage = 'amc'; }
-  const number = await nextNumber(d.kind === 'installation' ? 'JOB' : 'ITP-T');
-  const j = await one(`INSERT INTO jobs(number,kind,customer_id,order_id,title,issue,category,coverage,technician_id,status,scheduled_at,address,phone,source,otp,track_token,checklist)
-    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,md5(random()::text),$16) RETURNING *`,
-    [number, d.kind || 'service', custId, d.order_id || null, d.title || d.issue, d.issue, d.category, coverage, d.technician_id || null, d.technician_id ? 'assigned' : 'open',
-      d.scheduled_at || null, d.address, normPhone(d.phone) || null, d.source || 'manual', String(Math.floor(1000 + Math.random() * 9000)),
-      JSON.stringify(d.checklist || [{ t: 'Diagnose issue', done: false }, { t: 'Fix / replace', done: false }, { t: 'Test with customer', done: false }])]);
-  if (j.technician_id) require('../notify').notifyUser(j.technician_id, `New ${j.kind} job ${j.number}`, j.title || '', `/app#/jobs/${j.id}`);
+  const priority = ['low', 'normal', 'high', 'urgent'].includes(d.priority) ? d.priority : 'normal';
+  const number = await nextNumber(kind === 'installation' ? 'JOB' : 'ITP-T');
+  const status = kind === 'carry_in' ? 'received' : (d.technician_id ? 'assigned' : 'open');
+  const title = kind === 'carry_in' ? [dev.type, dev.brand, dev.model].filter(Boolean).join(' ') || 'Carry-in repair' : (d.title || d.issue);
+  const checklist = d.checklist || (kind === 'carry_in' ? [{ t: 'Diagnose & note fault', done: false }, { t: 'Share estimate with customer', done: false }, { t: 'Repair / replace parts', done: false }, { t: 'Test & clean device', done: false }] : [{ t: 'Diagnose issue', done: false }, { t: 'Fix / replace', done: false }, { t: 'Test with customer', done: false }]);
+  const j = await one(`INSERT INTO jobs(number,kind,customer_id,order_id,title,issue,category,coverage,technician_id,status,scheduled_at,address,phone,source,otp,track_token,checklist,priority,sla_due,device,estimate,site_id,parent_job_id,history)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,md5(random()::text),$16,$17, now() + ($18 || ' hours')::interval,$19,$20,$21,$22,$23) RETURNING *`,
+    [number, kind, custId, d.order_id || null, title, d.issue, d.category || dev.type || null, coverage, d.technician_id || null, status, d.scheduled_at || null, d.address, normPhone(d.phone) || null,
+      d.source || (kind === 'carry_in' ? 'walkin' : 'manual'), String(Math.floor(1000 + Math.random() * 9000)), JSON.stringify(checklist), priority, String(SLA_HOURS_[priority]),
+      JSON.stringify({ ...dev, serial: serial || dev.serial || null }), +d.estimate || 0, d.site_id || null, d.parent_job_id || null,
+      JSON.stringify([{ s: status, at: new Date().toISOString(), by: req.user.name }])]);
+  if (j.technician_id) require('../notify').notifyUser(j.technician_id, `New ${kind === 'carry_in' ? 'carry-in repair' : kind} ${j.number}`, j.title || '', `/app#/jobs/${j.id}`);
+  if (kind === 'carry_in') { const W2 = require('../workflows'); const jj = await one('SELECT * FROM jobs WHERE id=$1', [j.id]); require('../workflows'); await (async () => { const c = custId ? await one('SELECT name, phone FROM customers WHERE id=$1', [custId]) : null; const ph = (c && c.phone) || j.phone; if (ph) await sendWhatsApp(ph, { text: `🙏 ${c ? c.name : ''} ji, aapka ${title} (ticket ${j.number}) receive ho gaya hai. Status track karein: ${await W2.baseUrl()}/track?ticket=${j.number}` }).catch(() => {}); })(); }
+  await audit(req, 'create', 'job', j.id);
   res.json(j);
+}));
+r.post('/jobs/:id/status', h(async (req, res) => {
+  const j = await jobChecked(req, req.params.id);
+  const st = req.body.status;
+  const carry = ['received', 'diagnosing', 'awaiting_approval', 'repairing', 'ready', 'delivered', 'cancelled'];
+  const site = ['open', 'assigned', 'on_the_way', 'in_progress', 'cancelled'];
+  if (!(j.kind === 'carry_in' ? carry : site).includes(st)) return res.status(400).json({ error: 'Invalid status for this ticket' });
+  if (req.user.role === 'tech' && st === 'cancelled') return res.status(403).json({ error: 'Not permitted' });
+  if (req.body.estimate != null) await q('UPDATE jobs SET estimate=$2 WHERE id=$1', [j.id, +req.body.estimate]);
+  if (st === 'delivered' && +req.body.collect > 0) { await W.recordPayment({ customer_id: j.customer_id, order_id: j.order_id, amount: req.body.collect, mode: req.body.mode || 'Cash', kind: 'service' }, req.user); await q('UPDATE jobs SET collected=collected+$2 WHERE id=$1', [j.id, +req.body.collect]); }
+  const u = await W.setJobStatus(j.id, st, req.user, req.body.note);
+  if (req.user.role === 'tech') delete u.otp;
+  res.json(u);
+}));
+r.get('/jobs/:id/parts', h(async (req, res) => { await jobChecked(req, req.params.id); res.json(await q('SELECT jp.*, u.name uname FROM job_parts jp LEFT JOIN users u ON u.id=jp.user_id WHERE job_id=$1 ORDER BY id', [req.params.id])); }));
+r.post('/jobs/:id/parts', h(async (req, res) => { await jobChecked(req, req.params.id); res.json(await W.addPart(+req.params.id, req.body, req.user)); }));
+r.delete('/jobs/:id/parts/:pid', h(async (req, res) => {
+  await jobChecked(req, req.params.id);
+  const p = await one('DELETE FROM job_parts WHERE id=$1 AND job_id=$2 RETURNING *', [req.params.pid, req.params.id]);
+  if (p && p.product_id) await q('UPDATE products SET stock=stock+$2 WHERE id=$1', [p.product_id, +p.qty]);
+  res.json({ ok: true });
+}));
+r.get('/jobs/:id/pdf', h(async (req, res) => { await jobChecked(req, req.params.id); await pdf.jobPdf(res, req.params.id); }));
+// Technician brings a device back from site → linked carry-in ticket
+r.post('/jobs/:id/carry-in', h(async (req, res) => {
+  const j = await jobChecked(req, req.params.id);
+  const d = req.body; const dev = d.device || {};
+  const number = await nextNumber('ITP-T');
+  const title = [dev.type, dev.brand, dev.model].filter(Boolean).join(' ') || 'Device taken for repair';
+  const n = await one(`INSERT INTO jobs(number,kind,customer_id,title,issue,category,coverage,technician_id,status,phone,address,source,track_token,checklist,priority,sla_due,device,parent_job_id,history,otp)
+    VALUES($1,'carry_in',$2,$3,$4,$5,$6,$7,'received',$8,$9,'onsite_pickup',md5(random()::text),$10,'normal',now()+interval '72 hours',$11,$12,$13,$14) RETURNING *`,
+    [number, j.customer_id, title, d.issue || j.issue, dev.type || j.category, j.coverage, req.user.role === 'tech' ? req.user.id : j.technician_id, j.phone, j.address,
+      JSON.stringify([{ t: 'Diagnose & note fault', done: false }, { t: 'Share estimate with customer', done: false }, { t: 'Repair / replace parts', done: false }, { t: 'Return & install at site', done: false }]),
+      JSON.stringify(dev), j.id, JSON.stringify([{ s: 'received', at: new Date().toISOString(), by: req.user.name, note: 'Picked up from site by technician (' + j.number + ')' }]), String(Math.floor(1000 + Math.random() * 9000))]);
+  await W.pushHistory(j.id, j.status, req.user, `Device taken to workshop → ${number}`);
+  const c = j.customer_id ? await one('SELECT name, phone FROM customers WHERE id=$1', [j.customer_id]) : null;
+  const ph = (c && c.phone) || j.phone;
+  if (ph) sendWhatsApp(ph, { text: `🙏 ${c ? c.name : ''} ji, aapka ${title} repair ke liye hamare technician ${req.user.name} ne liya hai. Ticket ${number}. Track: ${await W.baseUrl()}/track?ticket=${number}` }).catch(() => {});
+  require('../notify').notifyRole('owner', `Device taken to workshop ${number}`, `${title} from ${c ? c.name : ''} (job ${j.number})`, '/crm#/service');
+  res.json(n);
 }));
 r.patch('/jobs/:id', h(async (req, res) => {
   const j = await jobChecked(req, req.params.id);
   const d = req.body; const set = [], p = [j.id];
-  const allowed = req.user.role === 'tech' ? ['status', 'checklist', 'notes', 'location'] : ['status', 'checklist', 'notes', 'technician_id', 'scheduled_at', 'coverage', 'title', 'issue', 'address', 'location'];
+  const allowed = req.user.role === 'tech' ? ['status', 'checklist', 'notes', 'location', 'device'] : ['status', 'checklist', 'notes', 'technician_id', 'scheduled_at', 'coverage', 'title', 'issue', 'address', 'location', 'priority', 'estimate', 'device'];
   for (const k of allowed) if (k in d) { p.push(k === 'checklist' ? JSON.stringify(d[k]) : (d[k] === '' ? null : d[k])); set.push(`${k}=?`); }
   if (req.user.role === 'tech' && d.status && !['on_the_way', 'in_progress', 'assigned'].includes(d.status)) return res.status(400).json({ error: 'Use Complete job to finish' });
   if ('technician_id' in d && d.technician_id && j.status === 'open') set.push(`status='assigned'`);
   const u = set.length ? await one(`UPDATE jobs SET ${set.join(',')} WHERE id=$1 RETURNING *`, p) : j;
   if (d.technician_id && +d.technician_id !== j.technician_id) require('../notify').notifyUser(+d.technician_id, `Job ${j.number} assigned to you`, j.title || '', `/app#/jobs/${j.id}`);
+  if (d.status && d.status !== j.status) await W.pushHistory(j.id, d.status, req.user);
   if (d.status === 'on_the_way') {
     const c = j.customer_id ? await one('SELECT name, phone FROM customers WHERE id=$1', [j.customer_id]) : null;
     if (c) sendWhatsApp(c.phone || j.phone, { text: `Namaste ${c.name} ji, technician ${req.user.name} aapke paas aa rahe hain (${j.number}). Track: ${await W.baseUrl()}/track/${j.track_token}` }).catch(() => {});
@@ -699,7 +789,7 @@ r.get('/reports/:type', OWNER, h(async (req, res) => {
 r.get('/automations', OWNER, h(async (req, res) => res.json(await q('SELECT * FROM automations ORDER BY key'))));
 r.patch('/automations/:key', OWNER, h(async (req, res) => { const a = await one('UPDATE automations SET enabled=$2 WHERE key=$1 RETURNING *', [req.params.key, !!req.body.enabled]); await audit(req, 'toggle', 'automation', req.params.key, req.body); res.json(a); }));
 r.post('/automations/:key/run', OWNER, h(async (req, res) => {
-  const map = { followup_reminders: 'followupReminders', pending_quote_alert: 'pendingQuotes', service_ticket_alert: 'pendingTickets', payment_reminders: 'paymentReminders', low_stock: 'lowStock', amc_reminders: 'amcReminders', daily_summary: 'dailySummary', indiamart_pull: 'indiamartPull', email_pull: 'emailPull' };
+  const map = { fu_escalation: 'escalations', sla_escalation: 'escalations', followup_reminders: 'followupReminders', pending_quote_alert: 'pendingQuotes', service_ticket_alert: 'pendingTickets', payment_reminders: 'paymentReminders', low_stock: 'lowStock', amc_reminders: 'amcReminders', daily_summary: 'dailySummary', indiamart_pull: 'indiamartPull', email_pull: 'emailPull' };
   if (!map[req.params.key]) return res.status(400).json({ error: 'This automation is event-triggered (runs automatically)' });
   await autoJobs[map[req.params.key]]();
   res.json({ ok: true });

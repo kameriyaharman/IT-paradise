@@ -1,1 +1,2 @@
-{"name":"IT Paradise CRM","short_name":"ITP CRM","start_url":"/app","display":"standalone","background_color":"#0B1F44","theme_color":"#0B1F44","icons":[{"src":"/static/img/logo.svg","sizes":"any","type":"image/svg+xml"}]}
+{"name":"IT Paradise — Staff App","short_name":"IT Paradise","description":"Owner, Sales and Technician app for IT Paradise","start_url":"/app","scope":"/app","display":"standalone","orientation":"portrait","background_color":"#0B1F44","theme_color":"#0B1F44",
+"icons":[{"src":"/static/img/icon-192.png","sizes":"192x192","type":"image/png"},{"src":"/static/img/icon-512.png","sizes":"512x512","type":"image/png"},{"src":"/static/img/icon-maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}]}

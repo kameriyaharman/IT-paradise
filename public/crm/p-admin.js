@@ -1,4 +1,4 @@
-import { html, useState, useEffect, api, put, del, useApi, Load, Ic, Badge, inr, dt, go, toast, run, Btn, Modal, F, useForm, Search, Tabs, Empty, openFile, auth } from './ui.js';
+import { html, useState, useEffect, useRef, api, put, del, useApi, Load, Ic, Badge, inr, dt, go, toast, run, Btn, Modal, F, useForm, Search, Tabs, Empty, openFile, auth, ProductPicker } from './ui.js';
 
 const ARTS = ['laptop', 'desktop', 'workstation', 'monitor', 'dome', 'bullet', 'ptz', 'nvr', 'solar', 'wificam', 'fisheye', 'hdd', 'switch', 'ap', 'rack', 'cable', 'attendance', 'rfid', 'doorphone', 'ups', 'upssmall', 'printer', 'mfp', 'projector', 'panel'];
 async function upload(files) { const fd = new FormData(); [...files].forEach(f => fd.append('files', f)); return (await api('/api/cms/media', { body: fd })).ids; }
@@ -20,6 +20,7 @@ export function ProductList() {
     <input type="file" accept=".csv,text/csv" onChange=${async (e) => { const txt = await e.target.files[0].text(); const r = await run(() => fetch('/api/cms/products/import', { method: 'POST', headers: { Authorization: 'Bearer ' + auth.token, 'Content-Type': 'text/plain' }, body: txt }).then(r => r.json())); toast(`Imported ${r.imported} products`); setImp(false); q.reload(); }}/><//>`}</div>`;
 }
 export function ProductEdit({ id }) {
+  const [bg, setBg] = useState(null);
   const isNew = id === 'new'; const cats = useApi('/api/cms/categories'); const brands = useApi('/api/cms/brands'); const all = useApi('/api/cms/products');
   const [v, bind, setV] = useForm({ published: true, serial_tracked: true, gst_rate: 18, warranty_months: 12, art: 'dome', specs: [], faq: [], highlights: [], image_ids: [], related: [] });
   useEffect(() => { if (!isNew) api('/api/cms/products/' + id).then(p => setV({ ...p, highlights: (p.highlights || []).join('\n') })); }, [id]);
@@ -42,13 +43,21 @@ export function ProductEdit({ id }) {
       <h4>FAQ</h4>${(v.faq || []).map((s, i) => html`<div class="row gap"><input value=${s.q} placeholder="Question" onInput=${(e) => setFaq(i, 'q', e.target.value)}/><input class="grow" value=${s.a} placeholder="Answer" onInput=${(e) => setFaq(i, 'a', e.target.value)}/><button class="icbtn" onClick=${() => setV(x => ({ ...x, faq: x.faq.filter((_, j) => j !== i) }))}><${Ic} n="x" s=${14}/></button></div>`)}
       <${Btn} sm kind="ghost" icon="plus" onClick=${() => setV(x => ({ ...x, faq: [...(x.faq || []), { q: '', a: '' }] }))}>Add FAQ</${Btn}></div></div>
   <div class="col-stack">
-    <div class="card pad"><h3>Images</h3><div class="pgrid big">${(v.image_ids || []).map(i => html`<div class="pimgw"><img src=${'/media/' + i}/><button class="icbtn" onClick=${() => setV(x => ({ ...x, image_ids: x.image_ids.filter(y => y !== i) }))}><${Ic} n="x" s=${12}/></button></div>`)}
+    <div class="card pad"><h3>Images</h3><div class="pgrid big">${(v.image_ids || []).map((i, ix) => html`<div class="pimgw"><img src=${'/media/' + i}/><button class="icbtn" title="Remove image" onClick=${() => setV(x => ({ ...x, image_ids: x.image_ids.filter(y => y !== i) }))}><${Ic} n="x" s=${12}/></button>
+        <button class="bgbtn" title="Remove background" onClick=${() => setBg({ id: i, ix })}>✨ BG</button>${ix > 0 && html`<button class="mainbtn" title="Make main photo" onClick=${() => setV(x => ({ ...x, image_ids: [i, ...x.image_ids.filter(y => y !== i)] }))}>★</button>`}</div>`)}
       <label class="padd"><${Ic} n="plus"/><input type="file" accept="image/*" multiple onChange=${async (e) => { const ids = await run(() => upload(e.target.files)); setV(x => ({ ...x, image_ids: [...(x.image_ids || []), ...ids] })); }}/></label></div>
+      <p class="muted small">✨ BG = automatic background remove · ★ = make main photo</p>
       <p class="muted small">First image is the main photo. Without photos, the built-in illustration is used:</p><select ...${bind('art')}>${ARTS.map(a => html`<option>${a}</option>`)}</select></div>
     <div class="card pad"><h3>SEO</h3><${F} l="Meta title"><input ...${bind('meta_title')}/></${F}><${F} l="Meta description"><textarea rows="3" ...${bind('meta_desc')}></textarea></${F}></div>
-    <div class="card pad"><h3>Frequently bought together</h3><select multiple size="6" onChange=${(e) => setV(x => ({ ...x, related: [...e.target.selectedOptions].map(o => +o.value) }))}>${(all.data || []).filter(p => p.id !== +id).map(p => html`<option value=${p.id} selected=${(v.related || []).includes(p.id)}>${p.name}</option>`)}</select><small class="muted">Ctrl/Cmd-click to select multiple</small></div>
+    <div class="card pad"><h3>Frequently bought together</h3><p class="muted small">Shown on the product page with “Add to quote”. Drag order with ↑ ↓.</p>
+      ${(v.related || []).map((rid, ix) => { const rp = (all.data || []).find(p => p.id === rid); return html`<div class="fbt-item"><span class="fbt-n">${ix + 1}</span><div class="grow"><b>${rp ? rp.name : '#' + rid}</b><small class="muted">${rp ? (+rp.price ? inr(rp.price) : 'On request') : ''}</small></div>
+        <button class="icbtn" disabled=${ix === 0} onClick=${() => setV(x => { const r = [...x.related]; [r[ix - 1], r[ix]] = [r[ix], r[ix - 1]]; return { ...x, related: r }; })}>↑</button>
+        <button class="icbtn" disabled=${ix === v.related.length - 1} onClick=${() => setV(x => { const r = [...x.related]; [r[ix + 1], r[ix]] = [r[ix], r[ix + 1]]; return { ...x, related: r }; })}>↓</button>
+        <button class="icbtn" onClick=${() => setV(x => ({ ...x, related: x.related.filter(y => y !== rid) }))}><${Ic} n="x" s=${14}/></button></div>`; })}
+      ${!(v.related || []).length && html`<p class="muted small">None selected — similar best sellers are shown automatically.</p>`}
+      <${ProductPicker} ph="Search & add product…" onPick=${(p) => !p.custom && p.id !== +id && setV(x => ({ ...x, related: [...new Set([...(x.related || []), p.id])] }))}/></div>
     <div class="row gap"><${Btn} onClick=${save}>Save product</${Btn}>${!isNew && html`<a class="btn b-ghost" target="_blank" href=${'/product/' + v.slug}>View</a><${Btn} kind="ghost" icon="trash" onClick=${async () => { if (confirm('Delete product? (If used in orders it will be hidden instead.)')) { await run(() => del('/api/cms/products/' + id), 'Done'); go('/products'); } }}>Delete</${Btn}>`}</div>
-  </div></div>`;
+  </div>${bg && html`<${BgRemove} mediaId=${bg.id} onClose=${() => setBg(null)} onDone=${(nid) => { setV(x => ({ ...x, image_ids: x.image_ids.map(y => y === bg.id ? nid : y) })); setBg(null); }}/>`}</div>`;
 }
 const SIMPLE = {
   categories: [['name', 'Name'], ['slug', 'URL slug'], ['blurb', 'Short description'], ['subtypes', 'Types (comma separated)'], ['sort', 'Order']],
@@ -109,7 +118,12 @@ function SettingsForm({ tab, s, reload }) {
     <${F} l="WhatsApp chatbot for new chats"><select ...${bind('wa_bot_enabled')}><option value="1">On</option><option value="0">Off (create lead directly)</option></select></${F}>
     <${F} l="Customer OTP required to close jobs"><select ...${bind('require_otp')}><option value="1">Yes (OTP or signature)</option><option value="0">No</option></select></${F}>
     <${F} l="Staff alerts on WhatsApp"><select ...${bind('staff_wa_alerts')}><option value="0">In-app only</option><option value="1">In-app + WhatsApp</option></select></${F}>
-    <${F} l="Inbox quick replies (JSON list)" full><input ...${bind('quick_replies')}/></${F}></div>${SaveBtn}</div>`;
+    <${F} l="Inbox quick replies (JSON list)" full><input ...${bind('quick_replies')}/></${F}>
+    <${F} l="Default quotation terms & conditions (one per line — editable per quotation)" full><textarea rows="8" ...${bind('quote_terms')}></textarea></${F}>
+    <${F} l="Default delivery terms" full><input ...${bind('delivery_terms')}/></${F}>
+    <${F} l="Walk-in repair job-sheet terms" full><textarea rows="3" ...${bind('carry_in_terms')}></textarea></${F}>
+    <${F} l="Staff live location tracking"><select ...${bind('location_tracking')}><option value="1">On (while checked in & app open)</option><option value="0">Off</option></select></${F}>
+    <${F} l="Location update every (minutes)"><input type="number" min="1" ...${bind('location_interval_min')}/></${F}></div>${SaveBtn}</div>`;
   if (tab === 'whatsapp') return html`<div class="card pad"><div class="note"><b>Official WhatsApp Business Cloud API (Meta)</b> — real two-way integration, not redirect. Needs: Meta Business account (verified), a phone number registered on WhatsApp Cloud API, a permanent System User token. Meta charges per conversation (marketing / utility / authentication) as per Meta’s India rate card; service conversations (customer-initiated) are free within 24 h. Messages outside 24 h need approved templates (set names below).</div>
     <div class="form2">${fld('wa_phone_id', 'Phone number ID')}${fld('wa_token', 'Permanent access token', '', 'password')}${fld('meta_app_secret', 'App secret (webhook signature)', '', 'password')}${fld('meta_verify_token', 'Webhook verify token')}
     ${fld('wa_tpl_quote', 'Template: quotation (4 params)')}${fld('wa_tpl_payment', 'Template: payment reminder (4 params)')}${fld('wa_tpl_amc', 'Template: AMC reminder (3 params)')}${fld('wa_tpl_nudge', 'Template: follow-up nudge (1 param)')}${fld('wa_tpl_otp', 'Template: OTP (1 param)')}</div>
@@ -151,4 +165,83 @@ export function Enquiries() {
 export function WebsiteSettings() {
   const q = useApi('/api/cms/settings');
   return html`<div><div class="ph"><h1>Website settings</h1><a class="btn b-ghost" href="/" target="_blank"><${Ic} n="ext" s=${15}/> View website</a></div><${Load} q=${q}>${(s) => html`<${SettingsForm} tab="company" s=${s} reload=${q.reload}/>`}<//></div>`;
+}
+
+// ================= Automatic background removal =================
+// Edge flood-fill on plain/studio backgrounds (no external service), optional remove.bg API for complex photos.
+function removeBg(img, tol, feather, crop) {
+  const w = img.naturalWidth, h = img.naturalHeight, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0); const d = x.getImageData(0, 0, w, h), p = d.data;
+  // background reference = median colour of the border
+  const sam = []; const add = (i, j) => { const k = (j * w + i) * 4; sam.push([p[k], p[k + 1], p[k + 2]]); };
+  for (let i = 0; i < w; i += Math.max(1, w >> 7)) { add(i, 0); add(i, h - 1); } for (let j = 0; j < h; j += Math.max(1, h >> 7)) { add(0, j); add(w - 1, j); }
+  const med = [0, 1, 2].map(ch => sam.map(s => s[ch]).sort((a, b) => a - b)[sam.length >> 1]);
+  const dist = (k) => Math.sqrt((p[k] - med[0]) ** 2 + (p[k + 1] - med[1]) ** 2 + (p[k + 2] - med[2]) ** 2);
+  const seen = new Uint8Array(w * h), st = []; const T = tol, T2 = tol * (1 + feather);
+  for (let i = 0; i < w; i++) { st.push(i, (h - 1) * w + i); } for (let j = 0; j < h; j++) { st.push(j * w, j * w + w - 1); }
+  while (st.length) { const n = st.pop(); if (seen[n]) continue; const k = n * 4; const dd = dist(k); if (dd > T2) continue; seen[n] = 1;
+    p[k + 3] = dd <= T ? 0 : Math.round(255 * (dd - T) / (T2 - T)); const i = n % w, j = (n / w) | 0;
+    if (i > 0) st.push(n - 1); if (i < w - 1) st.push(n + 1); if (j > 0) st.push(n - w); if (j < h - 1) st.push(n + w); }
+  x.putImageData(d, 0, 0);
+  if (!crop) return c;
+  let x0 = w, y0 = h, x1 = 0, y1 = 0; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) if (p[(j * w + i) * 4 + 3] > 20) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (j < y0) y0 = j; if (j > y1) y1 = j; }
+  if (x1 <= x0) return c; const pad = Math.round(Math.max(x1 - x0, y1 - y0) * 0.04);
+  x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad); x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+  const o = document.createElement('canvas'); o.width = x1 - x0 + 1; o.height = y1 - y0 + 1; o.getContext('2d').drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height); return o;
+}
+export function BgRemove({ mediaId, onClose, onDone }) {
+  const [tol, setTol] = useState(38); const [fe, setFe] = useState(0.6); const [crop, setCrop] = useState(true); const [img, setImg] = useState(null); const [out, setOut] = useState(null); const [busy, setBusy] = useState(false);
+  const s = useApi('/api/cms/settings');
+  useEffect(() => { const i = new Image(); i.onload = () => setImg(i); i.src = '/media/' + mediaId; }, [mediaId]);
+  useEffect(() => { if (!img) return; const t = setTimeout(() => setOut(removeBg(img, tol, fe, crop)), 60); return () => clearTimeout(t); }, [img, tol, fe, crop]);
+  const save = async (blob) => { const fd = new FormData(); fd.append('files', blob, 'product-nobg.png'); const r = await api('/api/cms/media', { body: fd }); onDone(r.ids[0]); toast('Background removed ✓'); };
+  return html`<${Modal} wide title="Remove background" onClose=${onClose} foot=${html`
+    ${s.data && s.data.removebg_key && html`<${Btn} kind="ghost" onClick=${async () => { setBusy(true); try { const r = await run(() => api('/api/cms/removebg/' + mediaId, { body: {} })); onDone(r.id); toast('Background removed (AI) ✓'); } finally { setBusy(false); } }}>AI remove (remove.bg)</${Btn}>`}
+    <${Btn} disabled=${!out || busy} onClick=${() => new Promise(ok => out.toBlob(async b => { await run(() => save(b)); ok(); }, 'image/png'))}>Save transparent PNG</${Btn}>`}>
+    <div class="bgwrap"><div><small class="muted">Original</small><div class="bgprev">${img && html`<img src=${img.src}/>`}</div></div>
+      <div><small class="muted">Result</small><div class="bgprev checker">${out ? html`<img src=${out.toDataURL('image/png')}/>` : html`<div class="spin"><span></span></div>`}</div></div></div>
+    <div class="form2 mt"><${F} l=${'Strength: ' + tol}><input type="range" min="8" max="120" value=${tol} onInput=${(e) => setTol(+e.target.value)}/></${F}><${F} l=${'Edge softness: ' + fe}><input type="range" min="0" max="1.5" step="0.1" value=${fe} onInput=${(e) => setFe(+e.target.value)}/></${F}></div>
+    <label class="chk"><input type="checkbox" checked=${crop} onChange=${(e) => setCrop(e.target.checked)}/> Auto-crop to product</label>
+    <p class="muted small">Works best on studio / plain-background photos. For busy backgrounds add a remove.bg API key in Admin → Appearance to enable AI removal.</p><//>`;
+}
+
+// ================= Appearance (logo, theme, fonts, hero, home sections) =================
+const FONTS = ['Poppins', 'Montserrat', 'Inter', 'Outfit', 'Plus Jakarta Sans', 'Manrope', 'Raleway', 'Nunito', 'Roboto', 'Open Sans', 'Lato', 'Playfair Display', 'DM Serif Display'];
+const SECTION_LABELS = { banners: 'Home banners', categories: 'Shop by category', industries: 'Solutions by industry & project', best: 'Best sellers', how: 'How we work', quote: 'Quote form' };
+export function Appearance() {
+  const q = useApi('/api/cms/settings');
+  return html`<div><div class="ph"><h1>Appearance</h1><a class="btn b-ghost" href="/" target="_blank"><${Ic} n="ext" s=${15}/> Preview website</a></div><${Load} q=${q}>${(s) => html`<${AppearanceForm} s=${s} reload=${q.reload}/>`}<//></div>`;
+}
+function AppearanceForm({ s, reload }) {
+  const J = (v, d) => { try { return v ? JSON.parse(v) : d; } catch (e) { return d; } };
+  const [v, bind, setV] = useForm(s);
+  const [secs, setSecs] = useState(J(s.home_sections, Object.keys(SECTION_LABELS).map(k => ({ k, on: true }))));
+  const [projs, setProjs] = useState(J(s.project_solutions, []));
+  const up = async (k, files) => { const ids = await run(() => upload(files)); setV(x => ({ ...x, [k]: String(ids[0]) })); };
+  const save = async () => { await run(() => put('/api/cms/settings', { ...v, home_sections: JSON.stringify(secs), project_solutions: JSON.stringify(projs) }), 'Appearance saved — live on website'); reload(); };
+  const mv = (i, d) => setSecs(a => { const r = [...a]; const j = i + d; if (j < 0 || j >= r.length) return r; [r[i], r[j]] = [r[j], r[i]]; return r; });
+  const color = (k, l) => html`<${F} l=${l}><div class="row gap"><input type="color" class="cpick" value=${v[k] || '#1E9BE0'} onInput=${(e) => setV(x => ({ ...x, [k]: e.target.value }))}/><input ...${bind(k)}/></div></${F}>`;
+  return html`<div class="g2c wide-l"><div class="col-stack">
+    <div class="card pad"><h3>Logo</h3><div class="row gap logo-row"><div class="logo-prev"><img src=${v.logo_id ? '/media/' + v.logo_id : '/static/img/logo.svg'}/></div>
+      <div class="grow"><input type="file" accept="image/*" onChange=${(e) => up('logo_id', e.target.files)}/>${v.logo_id && html`<button class="btn b-ghost sm mt" onClick=${() => setV(x => ({ ...x, logo_id: '' }))}>Use default logo</button>`}</div></div>
+      <div class="form2 mt"><${F} l="Company name"><input ...${bind('company_name')}/></${F}><${F} l="Tagline under name"><input ...${bind('logo_tagline')}/></${F}></div>
+      <label class="chk"><input type="checkbox" checked=${v.logo_show_text !== '0'} onChange=${(e) => setV(x => ({ ...x, logo_show_text: e.target.checked ? '1' : '0' }))}/> Show company name next to logo (turn off if your logo already has the name)</label></div>
+    <div class="card pad"><h3>Theme colours & fonts</h3><div class="form2">${color('theme_primary', 'Primary (buttons, links)')}${color('theme_secondary', 'Secondary (gradient end)')}${color('theme_navy', 'Dark (header, footer, hero)')}
+      <${F} l="Heading font"><select ...${bind('heading_font')}>${FONTS.map(f => html`<option>${f}</option>`)}</select></${F}><${F} l="Body font"><select ...${bind('body_font')}>${FONTS.filter(f => !/Serif|Playfair/.test(f)).map(f => html`<option>${f}</option>`)}</select></${F}></div>
+      <div class="theme-prev" style=${{ '--p': v.theme_primary, '--s': v.theme_secondary, '--n': v.theme_navy, fontFamily: v.heading_font }}><b>Heading preview — ${v.heading_font}</b><span class="tp-btn">Get a Quote</span><span class="tp-dark">Dark</span></div></div>
+    <div class="card pad"><h3>Hero section (top of home page)</h3><div class="form2"><${F} l="Small line above heading"><input ...${bind('hero_eyebrow')}/></${F}><${F} l="Style"><select ...${bind('hero_style')}><option value="laptop">3D laptop animation</option><option value="image">Image / banner on right</option><option value="none">Text only</option></select></${F}>
+      <${F} l="Heading line 1"><input ...${bind('hero_title_1')}/></${F}><${F} l="Heading line 2 (gradient)"><input ...${bind('hero_title_2')}/></${F}><${F} l="Sub text" full><textarea rows="2" ...${bind('hero_sub')}></textarea></${F}>
+      ${v.hero_style === 'image' && html`<${F} l="Hero image" full><div class="row gap">${v.hero_image_id && html`<img class="thumbimg big" src=${'/media/' + v.hero_image_id}/>`}<input type="file" accept="image/*" onChange=${(e) => up('hero_image_id', e.target.files)}/></div></${F}>`}
+      <${F} l="Stat: since"><input ...${bind('stat_years')}/></${F}><${F} l="Stat: products"><input ...${bind('stat_products')}/></${F}><${F} l="Stat: installations"><input ...${bind('stat_installs')}/></${F}><${F} l="Stat: sectors"><input ...${bind('stat_sectors')}/></${F}></div></div>
+    <div class="card pad"><h3>Solutions by project</h3>${projs.map((p, i) => html`<div class="proj-ed"><input value=${p.t} placeholder="Title" onInput=${(e) => setProjs(a => a.map((x, j) => j === i ? { ...x, t: e.target.value } : x))}/><input class="grow" value=${p.d} placeholder="Description" onInput=${(e) => setProjs(a => a.map((x, j) => j === i ? { ...x, d: e.target.value } : x))}/>
+      <select value=${p.art} onChange=${(e) => setProjs(a => a.map((x, j) => j === i ? { ...x, art: e.target.value } : x))}>${ARTS.map(a => html`<option>${a}</option>`)}</select><input value=${p.link || ''} placeholder="/products/…" onInput=${(e) => setProjs(a => a.map((x, j) => j === i ? { ...x, link: e.target.value } : x))}/>
+      <button class="icbtn" onClick=${() => setProjs(a => a.filter((_, j) => j !== i))}><${Ic} n="x" s=${14}/></button></div>`)}
+      <${Btn} sm kind="ghost" icon="plus" onClick=${() => setProjs(a => [...a, { t: '', d: '', art: 'dome', link: '' }])}>Add project solution</${Btn}></div>
+  </div><div class="col-stack">
+    <div class="card pad"><h3>Home page layout</h3><p class="muted small">Turn sections on/off and change their order.</p>
+      ${secs.map((x, i) => html`<div class="sec-row"><label class="switch"><input type="checkbox" checked=${x.on} onChange=${(e) => setSecs(a => a.map((y, j) => j === i ? { ...y, on: e.target.checked } : y))}/><span></span></label><b class="grow">${SECTION_LABELS[x.k] || x.k}</b><button class="icbtn" onClick=${() => mv(i, -1)}>↑</button><button class="icbtn" onClick=${() => mv(i, 1)}>↓</button></div>`)}
+      <p class="muted small">Edit section content: <a class="t-blue" href="#/categories">Categories</a> · <a class="t-blue" href="#/sectors">Industries</a> · <a class="t-blue" href="#/banners">Banners</a> · <a class="t-blue" href="#/products">Best sellers (★ in product)</a></p></div>
+    <div class="card pad"><h3>Advanced</h3><${F} l="remove.bg API key (optional, AI background removal)"><input type="password" ...${bind('removebg_key')}/></${F}><${F} l="Custom CSS (optional)"><textarea rows="5" ...${bind('custom_css')} placeholder=".hero{...}"></textarea></${F}></div>
+    <div class="savebar"><${Btn} onClick=${save}>Save appearance</${Btn}></div>
+  </div></div>`;
 }

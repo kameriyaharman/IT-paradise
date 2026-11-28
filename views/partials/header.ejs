@@ -3,30 +3,31 @@
   <span><%- icon('shield', 14) %> Trusted since 2006 · <%= s.city || 'Bhilwara, Rajasthan' %></span>
   <span class="tb-right">
     <% if (s.phone_sales) { %><a href="tel:<%= s.phone_sales %>"><%- icon('phone', 13) %> <%= s.phone_sales %></a><% } %>
-    <a href="https://wa.me/<%= waNum %>" target="_blank" rel="noopener"><%- icon('wa', 14) %> WhatsApp us</a>
-    <a href="#" data-open="service"><%- icon('tool', 13) %> Request a service</a>
+    <a href="https://wa.me/<%= waNum %>" target="_blank" rel="noopener"><%- icon('wa', 14) %> WhatsApp Us</a>
+    <a href="/track"><%- icon('clock', 13) %> Track Ticket</a>
+    <a href="#" data-open="service"><%- icon('tool', 13) %> Request a Service</a>
   </span>
 </div></div>
 <header class="hdr"><div class="wrap hdr-in">
   <button class="burger" aria-label="Menu" data-toggle="nav"><%- icon('menu', 22) %></button>
-  <a href="/" class="logo" aria-label="IT Paradise home"><img src="/static/img/logo.svg" alt="" width="40" height="40"><span><b><%= s.company_name || 'IT PARADISE' %></b><small>TECHNOLOGY. INTEGRATED.</small></span></a>
+  <a href="/" class="logo" aria-label="IT Paradise home"><img src="<%= logoUrl %>" alt="<%= s.company_name || 'IT PARADISE' %>" height="40" class="<%= logoText ? '' : 'logo-only' %>"><% if (logoText) { %><span><b><%= s.company_name || 'IT PARADISE' %></b><small><%= (s.logo_tagline || 'TECHNOLOGY. INTEGRATED.') %></small></span><% } %></a>
   <form class="search" action="/search" role="search"><%- icon('search', 16) %><input name="q" placeholder="Search laptops, CCTV, UPS, printers…" value="<%= typeof query !== 'undefined' && query.q ? query.q : '' %>" aria-label="Search products"></form>
   <nav class="nav" id="nav">
     <a href="/" class="<%= path === '/' ? 'on' : '' %>">Home</a>
     <a href="/products" class="<%= path.startsWith('/product') ? 'on' : '' %>">Products</a>
     <a href="/solutions" class="<%= path.startsWith('/solutions') ? 'on' : '' %>">Solutions</a>
     <a href="/brands" class="<%= path === '/brands' ? 'on' : '' %>">Brands</a>
-    <a href="/about" class="<%= path === '/about' ? 'on' : '' %>">About us</a>
-    <a href="/support" class="<%= path === '/support' ? 'on' : '' %>">Support</a>
+    <a href="/about" class="<%= path === '/about' ? 'on' : '' %>">About Us</a>
+    <a href="/support" class="<%= path === '/support' || path.startsWith('/track') ? 'on' : '' %>">Support</a>
     <a href="/contact" class="<%= path === '/contact' ? 'on' : '' %>">Contact</a>
   </nav>
-  <a href="/quote" class="qcart" aria-label="My quote list"><%- icon('cart', 22) %><i class="qc-n" hidden>0</i><span>Quote list</span></a>
-  <a href="#quote" class="btn btn-primary hdr-cta" data-open="enquiry" data-form="Get a quote (header)"><%- icon('quote', 16) %> Get a quote</a>
+  <a href="/quote" class="qcart" aria-label="My quote list"><%- icon('cart', 22) %><i class="qc-n" hidden>0</i><span>Quote List</span></a>
+  <a href="#quote" class="btn btn-primary hdr-cta" data-open="enquiry" data-form="Get a quote (header)"><%- icon('quote', 16) %> Get a Quote</a>
 </div>
 <div class="catbar"><div class="wrap">
   <% const cicons = {'business-computing':'laptop','video-surveillance':'camera','enterprise-networking':'wifi','access-attendance':'fingerprint','power-backup':'bolt','print-display':'printer'}; %>
   <% categories.forEach(c => { %><a href="/products/<%= c.slug %>" class="<%= path === '/products/' + c.slug ? 'on' : '' %>"><%- icon(cicons[c.slug] || 'grid', 15) %> <%= c.name %></a><% }) %>
-  <a href="/products" class="all">All categories <%- icon('chevron', 14) %></a>
+  <a href="/products" class="all">All Categories <%- icon('chevron', 14) %></a>
 </div></div>
 </header>
 <main>

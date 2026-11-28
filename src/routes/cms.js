@@ -85,7 +85,7 @@ r.put('/pages/:slug', h(async (req, res) => res.json(await one(`INSERT INTO page
   ON CONFLICT(slug) DO UPDATE SET title=$2, body=$3, meta_title=$4, meta_desc=$5, updated_at=now() RETURNING *`, [req.params.slug, req.body.title, req.body.body, req.body.meta_title, req.body.meta_desc]))));
 
 // Settings — secrets are write-only (masked on read)
-const SECRET_KEYS = ['wa_token', 'meta_app_secret', 'meta_page_token', 'indiamart_key', 'smtp_pass', 'imap_pass', 'webhook_key'];
+const SECRET_KEYS = ['removebg_key', 'wa_token', 'meta_app_secret', 'meta_page_token', 'indiamart_key', 'smtp_pass', 'imap_pass', 'webhook_key'];
 r.get('/settings', h(async (req, res) => {
   const s = await getSettings(true);
   const out = {};
@@ -105,6 +105,18 @@ r.post('/settings/test-whatsapp', h(async (req, res) => {
   res.json(await sendWhatsApp(req.body.phone, req.body.template ? { template: req.body.template } : { text: req.body.text || 'Test message from IT Paradise CRM ✅' }, { userId: req.user.id }));
 }));
 
+r.post('/removebg/:id', h(async (req, res) => {
+  const s = await getSettings();
+  if (!s.removebg_key) return res.status(400).json({ error: 'Add a remove.bg API key in Appearance first' });
+  const m = await one('SELECT filename,mime,data FROM media WHERE id=$1', [req.params.id]);
+  if (!m) return res.status(404).json({ error: 'Image not found' });
+  const fd = new FormData(); fd.append('image_file', new Blob([m.data], { type: m.mime || 'image/jpeg' }), m.filename || 'image.jpg'); fd.append('size', 'auto'); fd.append('crop', 'true');
+  const r = await fetch('https://api.remove.bg/v1.0/removebg', { method: 'POST', headers: { 'X-Api-Key': s.removebg_key }, body: fd });
+  if (!r.ok) { const j = await r.json().catch(() => ({})); return res.status(400).json({ error: (j.errors && j.errors[0] && j.errors[0].title) || 'remove.bg failed' }); }
+  const buf = Buffer.from(await r.arrayBuffer());
+  const n = await one('INSERT INTO media(filename,mime,data) VALUES($1,$2,$3) RETURNING id', [(m.filename || 'image').replace(/\.\w+$/, '') + '-nobg.png', 'image/png', buf]);
+  res.json({ id: n.id });
+}));
 r.get('/enquiries', h(async (req, res) => {
   const rows = await q(`SELECT l.id,l.name,l.phone,l.need,l.stage,l.source_detail,l.created_at,u.name owner FROM leads l LEFT JOIN users u ON u.id=l.owner_id WHERE l.source='website' ORDER BY l.id DESC LIMIT 200`);
   const k = await one(`SELECT count(*)::int week, count(*) FILTER (WHERE source_detail ILIKE 'Quote list%')::int quotes FROM leads WHERE source='website' AND created_at > now()-interval '7 days'`);

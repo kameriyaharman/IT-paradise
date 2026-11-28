@@ -181,3 +181,34 @@
     } catch (ex) { err.textContent = ex.message; err.hidden = false; } finally { btn.disabled = false; btn.innerHTML = old; }
   });
 })();
+// ===== v2: solution tabs, source/campaign capture, WhatsApp click tracking =====
+(function () {
+  document.querySelectorAll('.sol-switch').forEach(sw => sw.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    sw.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    const sec = sw.closest('section'); sec.querySelectorAll('[data-pane]').forEach(p => { p.hidden = p.dataset.pane !== b.dataset.sw; p.querySelectorAll('.rv').forEach(x => x.classList.add('in')); });
+  }));
+  // First-touch attribution (UTM / ad click ids / landing page / referrer)
+  const K = 'itp_src'; let src = {};
+  try { src = JSON.parse(localStorage.getItem(K) || '{}'); } catch (e) { }
+  const qp = new URLSearchParams(location.search); const fresh = {};
+  ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'].forEach(k => { if (qp.get(k)) fresh[k] = qp.get(k); });
+  if (Object.keys(fresh).length || !src.landing) {
+    src = Object.keys(fresh).length ? { ...fresh, landing: location.href, referrer: document.referrer || '', at: Date.now() } : { ...src, landing: src.landing || location.href, referrer: src.referrer || document.referrer || '' };
+    try { localStorage.setItem(K, JSON.stringify(src)); } catch (e) { }
+  }
+  window.ITP_SRC = () => ({ utm: src, page_url: location.href, referrer: src.referrer || document.referrer || '' });
+  // Patch fetch for our public form endpoints to include attribution
+  const of = window.fetch;
+  window.fetch = function (url, opts) {
+    try { if (typeof url === 'string' && /\/api\/public\/(enquiry|service|quote-request)/.test(url) && opts && opts.body) { const b = JSON.parse(opts.body); opts = { ...opts, body: JSON.stringify({ ...b, ...window.ITP_SRC() }) }; } } catch (e) { }
+    return of.call(this, url, opts);
+  };
+  // WhatsApp / call click tracking
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href]'); if (!a) return;
+    const h = a.getAttribute('href'); const kind = /wa\.me/.test(h) ? 'whatsapp' : /^tel:/.test(h) ? 'call' : null; if (!kind) return;
+    const pid = (a.closest('.pcard,.pd') && (a.closest('.pcard,.pd').querySelector('[data-addq]') || {}).dataset || {}).addq;
+    try { navigator.sendBeacon('/api/public/click', new Blob([JSON.stringify({ kind, page: location.pathname, product_id: pid || null, utm: src })], { type: 'application/json' })); } catch (x) { }
+  }, true);
+})();

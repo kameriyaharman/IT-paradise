@@ -62,10 +62,55 @@ const SECTORS = [
 
 const BRANDS = ['Hikvision', 'CP Plus', 'Dahua', 'Dell', 'HP', 'Lenovo', 'TP-Link', 'D-Link', 'eSSL', 'Luminous', 'Epson', 'Canon'];
 
+const PROJECTS = [
+  { t: 'CCTV Surveillance Project', d: 'Site survey, IP/HD cameras, NVR, cabling, mobile view & AMC.', art: 'dome', link: '/products/video-surveillance' },
+  { t: 'Computer Lab Setup', d: 'Desktops, networking, UPS and installation for schools & institutes.', art: 'desktop', link: '/products/business-computing' },
+  { t: 'Office Network & Wi-Fi', d: 'Structured cabling, switches, firewall and seamless Wi-Fi.', art: 'switch', link: '/products/enterprise-networking' },
+  { t: 'Attendance & Access Control', d: 'Face / biometric attendance, door access and payroll reports.', art: 'attendance', link: '/products/access-attendance' },
+  { t: 'Smart Classroom', d: 'Interactive panels, projectors and classroom software.', art: 'panel', link: '/products/print-display' },
+  { t: 'Power Backup & UPS', d: 'Online UPS, battery banks and power audit for critical systems.', art: 'ups', link: '/products/power-backup' },
+  { t: 'Server Room & Rack', d: 'Racks, servers, storage and cable management done right.', art: 'rack', link: '/products/enterprise-networking' },
+  { t: 'Print & Display Solutions', d: 'Printers, MFPs, displays and digital signage for business.', art: 'mfp', link: '/products/print-display' },
+];
+const QUOTE_TERMS = `1. Prices are in INR; GST extra as applicable.
+2. Payment: as per payment terms mentioned above.
+3. Delivery: 3–7 working days from order confirmation, subject to stock.
+4. Installation charges extra unless included in the quotation.
+5. Warranty as per manufacturer; physical / electrical / water damage not covered.
+6. Goods once sold will not be taken back.
+7. Subject to Bhilwara jurisdiction.`;
+
+async function seedV2() { // client feedback round — safe on existing installs
+  const s = await getSettings(true);
+  if (s.v2 === '1') return;
+  const defaults = {
+    quote_terms: QUOTE_TERMS, delivery_terms: '3–7 working days from order confirmation', project_solutions: JSON.stringify(PROJECTS),
+    home_sections: JSON.stringify([{ k: 'banners', on: true }, { k: 'categories', on: true }, { k: 'industries', on: true }, { k: 'best', on: true }, { k: 'how', on: true }, { k: 'quote', on: true }]),
+    theme_primary: '#1E9BE0', theme_secondary: '#1373C9', theme_navy: '#0B1F44', heading_font: 'Poppins', body_font: 'Poppins', hero_style: 'laptop',
+    hero_eyebrow: 'YOUR TECHNOLOGY. OUR EXPERTISE.', hero_title_1: 'Technology.', hero_title_2: 'Integrated.',
+    hero_sub: 'Computers, CCTV, networking, attendance, power backup and display — supplied, installed and supported by one trusted partner.',
+    logo_show_text: '1', logo_tagline: 'TECHNOLOGY. INTEGRATED.', location_tracking: '1', location_interval_min: '5', carry_in_terms: 'Please collect your device within 30 days of the “Ready” message. We are not responsible for data loss — please keep a backup. Estimate approval is required before repair.',
+  };
+  for (const [k, v] of Object.entries(defaults)) if (s[k] == null || s[k] === '') await setSetting(k, v);
+  await q(`UPDATE sectors SET name='Homes & Residential' WHERE slug='homes' AND name='Homes'`);
+  await q(`INSERT INTO sectors(slug,name,icon,headline,intro,packages,sort) VALUES('hotels','Hotels & Hospitality','building','Guest-ready technology',
+    'Guest Wi-Fi, CCTV, door access, front-office computing and power backup for hotels, resorts and restaurants.',$1,6) ON CONFLICT(slug) DO NOTHING`,
+    [JSON.stringify([{ t: 'Guest Wi-Fi', d: 'Seamless Wi-Fi with voucher / login', art: 'ap' }, { t: 'Hotel CCTV', d: 'Lobby, corridors, parking — mobile view', art: 'dome' }, { t: 'Room & door access', d: 'RFID locks and staff access control', art: 'rfid' }, { t: 'Front office IT', d: 'PCs, printers, billing systems', art: 'desktop' }, { t: 'Staff attendance', d: 'Face attendance for shifts', art: 'attendance' }, { t: 'Power backup', d: 'Online UPS for front office & server', art: 'ups' }])]);
+  await q(`UPDATE sectors SET name='Offices & Corporate' WHERE slug='offices' AND name='Offices & corporates'`);
+  await q(`UPDATE sectors SET name='Schools & Education' WHERE slug='schools' AND name='Schools & education'`);
+  await q(`UPDATE sectors SET name='Factories & Industry' WHERE slug='factories' AND name='Factories & industry'`);
+  await q(`UPDATE sectors SET name='Hospitals & Healthcare' WHERE slug='hospitals' AND name='Hospitals & healthcare'`);
+  await q(`UPDATE sectors SET name='Retail & Businesses' WHERE slug='retail' AND name='Retail & businesses'`);
+  for (const [a, b] of [['Business computing', 'Business Computing'], ['Video surveillance', 'Video Surveillance'], ['Enterprise networking', 'Enterprise Networking'], ['Access & attendance', 'Access & Attendance'], ['Power backup', 'Power Backup'], ['Print & display', 'Print & Display']])
+    await q('UPDATE categories SET name=$2 WHERE name=$1', [a, b]);
+  await setSetting('stat_sectors', s.stat_sectors === '6' ? '7' : (s.stat_sectors || '7'));
+  await setSetting('v2', '1');
+}
+
 async function seed() {
   await seedAutomations();
   const s = await getSettings(true);
-  if (s.seeded === '1') return;
+  if (s.seeded === '1') { await seedV2().catch(e => console.error('[seedV2]', e.message)); return; }
   console.log('[seed] first run — seeding');
   const defaults = {
     company_name: 'IT PARADISE', tagline: 'Technology, integrated. Since 2006.', city: 'Bhilwara, Rajasthan', address: 'Bhilwara, Rajasthan',
@@ -119,6 +164,7 @@ async function seed() {
 
   if (process.env.SEED_DEMO !== '0') await seedDemo();
   await setSetting('seeded', '1');
+  await seedV2();
 }
 
 async function seedDemo() {

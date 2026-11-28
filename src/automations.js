@@ -20,6 +20,8 @@ const DEFAULTS = [
   ['amc_reminders', 'AMC & warranty', 'Renewals and warranty-end AMC offers sent automatically', 'AMC ends in 30/15/3 days · warranty ends in 30 days', 'WhatsApp renewal reminder / AMC offer + follow-up lead'],
   ['daily_summary', 'Daily summary', 'Owner gets 9 PM WhatsApp: leads, sales, collection, stock alerts', 'Every day 9 PM', 'WhatsApp summary to owner'],
   ['review_request', 'Review request', 'After installation, ask for Google review', 'Job completed', 'WhatsApp Google review link'],
+  ['fu_escalation', 'Overdue follow-up escalation', 'Follow-ups overdue by 24 h are escalated to the owner', 'Follow-up overdue > 24 h', 'Owner alert with salesperson name'],
+  ['sla_escalation', 'Service SLA escalation', 'Tickets past their SLA (urgent 4 h, high 8 h, normal 24 h, low 72 h) are escalated', 'Ticket open past SLA', 'Owner + technician alert'],
   ['indiamart_pull', 'IndiaMART sync', 'Pulls IndiaMART enquiries every 10 minutes (needs CRM key)', 'Every 10 min', 'Create leads from IndiaMART'],
   ['email_pull', 'Email enquiries', 'Reads the enquiry inbox via IMAP every 5 minutes', 'Every 5 min', 'Create leads from new emails'],
 ];
@@ -51,6 +53,20 @@ async function followupReminders() {
     await q('UPDATE followups SET auto_nudge=false WHERE id=$1', [n.id]);
   }
   if (due.length || nudge.length) await bump('followup_reminders');
+}
+
+async function escalations() {
+  if (await isOn('fu_escalation')) {
+    const rows = await q(`SELECT f.id, l.id lid, l.name, u.name uname FROM followups f JOIN leads l ON l.id=f.lead_id LEFT JOIN users u ON u.id=f.user_id
+      WHERE NOT f.done AND NOT f.escalated AND f.due_at < now() - interval '24 hours' AND l.stage NOT IN ('won','lost')`);
+    for (const r of rows) { await notifyRole('owner', `Overdue follow-up: ${r.name}`, `${r.uname || 'Unassigned'} has not followed up for 24 h+`, `/crm#/leads/${r.lid}`); await q('UPDATE followups SET escalated=true WHERE id=$1', [r.id]); }
+    if (rows.length) await bump('fu_escalation');
+  }
+  if (await isOn('sla_escalation')) {
+    const rows = await q(`SELECT j.* FROM jobs j WHERE NOT j.escalated AND j.sla_due < now() AND j.status NOT IN ('completed','closed','cancelled','delivered','ready')`);
+    for (const j of rows) { await notifyRole('owner', `SLA breached: ${j.number}`, `${j.title || j.issue || ''} · priority ${j.priority}`, '/crm#/service'); if (j.technician_id) await notifyUser(j.technician_id, `SLA breached: ${j.number}`, j.title || '', `/app#/jobs/${j.id}`); await q('UPDATE jobs SET escalated=true WHERE id=$1', [j.id]); }
+    if (rows.length) await bump('sla_escalation');
+  }
 }
 
 async function pendingQuotes() {
@@ -195,6 +211,7 @@ function start() {
   cron.schedule('*/5 * * * *', safe('email', emailPull), tz);
   cron.schedule('*/10 * * * *', safe('indiamart', indiamartPull), tz);
   cron.schedule('15 * * * *', safe('pendingQuotes', pendingQuotes), tz);
+  cron.schedule('*/15 * * * *', safe('escalations', escalations), tz);
   cron.schedule('30 * * * *', safe('pendingTickets', pendingTickets), tz);
   cron.schedule('0 10 * * *', safe('payments', paymentReminders), tz);
   cron.schedule('5 10 * * *', safe('amc', amcReminders), tz);
@@ -202,4 +219,4 @@ function start() {
   cron.schedule('0 21 * * *', safe('daily', dailySummary), tz);
 }
 
-module.exports = { start, seedAutomations, ingestIndiaMart, jobs: { followupReminders, pendingQuotes, pendingTickets, paymentReminders, lowStock, amcReminders, dailySummary, indiamartPull, emailPull } };
+module.exports = { start, seedAutomations, ingestIndiaMart, jobs: { escalations, followupReminders, pendingQuotes, pendingTickets, paymentReminders, lowStock, amcReminders, dailySummary, indiamartPull, emailPull } };

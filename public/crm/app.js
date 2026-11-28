@@ -8,21 +8,22 @@ const MOBILE = location.pathname.startsWith('/app');
 const ADMIN = location.pathname.startsWith('/admin');
 
 export function Login({ onDone }) {
-  const [v, bind] = useForm({ email: '', password: '', role: MOBILE ? 'sales' : '' });
+  const [v, bind] = useForm({ email: '', password: '' });
   const [err, setErr] = useState('');
   const submit = async (e) => {
     e && e.preventDefault(); setErr('');
-    try { const r = await api('auth/login', { body: { email: v.email, password: v.password, role: v.role || undefined } }); auth.set(r.token); onDone(r.user); }
+    try { const r = await api('auth/login', { body: { email: v.email, password: v.password } }); auth.set(r.token); onDone(r.user); }
     catch (x) { setErr(x.message); }
   };
   return html`<div class="login"><form class="lbox" onSubmit=${submit}>
     <div class="lbrand"><img src="/static/img/logo.svg" width="46"/><div><b>IT PARADISE</b><small>${MOBILE ? 'STAFF APP' : ADMIN ? 'WEBSITE ADMIN' : 'BUSINESS CRM'}</small></div></div>
-    ${MOBILE && html`<div class="roles">${[['owner', 'Owner'], ['sales', 'Sales'], ['tech', 'Technician']].map(([k, l]) => html`<button type="button" class=${v.role === k ? 'on' : ''} onClick=${() => bind('role').onInput({ target: { value: k } })}>${l}</button>`)}</div>`}
+    ${MOBILE && html`<p class="muted small center">Owner, Sales and Technician — one login, the app opens your role automatically.</p>`}
     <${F} l="Email or mobile"><input ...${bind('email')} autocomplete="username" required/></${F}>
     <${F} l="Password"><input type="password" ...${bind('password')} autocomplete="current-password" required/></${F}>
     ${err && html`<p class="t-red small">${err}</p>`}
     <button class="btn b-pri big">Login</button>
-    <p class="muted small center">Forgot password? Ask the owner to reset it from Team.</p>${!MOBILE && html`<p class="small center"><a class="t-blue" href="/download/app">Download staff Android app</a></p>`}
+    <p class="muted small center">Forgot password? Ask the owner to reset it from Team.</p>
+    ${MOBILE && /iPhone|iPad|iPod/.test(navigator.userAgent) && !navigator.standalone && html`<p class="ios-tip">iPhone: tap <b>Share</b> → <b>Add to Home Screen</b> to install the IT Paradise app.</p>`}${!MOBILE && html`<p class="small center"><a class="t-blue" href="/download/app">Download staff Android app</a></p>`}
   </form></div>`;
 }
 
@@ -104,7 +105,7 @@ function Router({ route, user }) {
 }
 
 const ANAV = [['WEBSITE', [['/', 'Overview', 'dash'], ['/products', 'Products', 'box'], ['/categories', 'Categories', 'list'], ['/brands', 'Brands', 'doc'], ['/sectors', 'Solutions by sector', 'users'], ['/banners', 'Home banners', 'camera'], ['/pages', 'Pages', 'doc'], ['/gallery', 'Photo gallery', 'camera']]],
-  ['LEADS', [['/enquiries', 'Website enquiries', 'chat']]], ['SETTINGS', [['/settings', 'Contact, about & SEO', 'gear'], ['/account', 'My account', 'user']]]];
+  ['LEADS', [['/enquiries', 'Website enquiries', 'chat']]], ['SETTINGS', [['/appearance', 'Appearance & theme', 'edit'], ['/settings', 'Contact, about & SEO', 'gear'], ['/account', 'My account', 'user']]]];
 function AdminShell({ user, route, onLogout }) {
   const [menu, setMenu] = useState(false);
   const [path] = route.split('?'); const p = path.split('/').filter(Boolean); const base = '/' + (p[0] || '');
@@ -116,6 +117,7 @@ function AdminShell({ user, route, onLogout }) {
     case 'pages': return html`<div><div class="ph"><h1>Pages</h1></div><${A.Pages}/></div>`;
     case 'enquiries': return html`<${A.Enquiries}/>`;
     case 'settings': return html`<${A.WebsiteSettings}/>`;
+    case 'appearance': return html`<${A.Appearance}/>`;
     case 'account': return html`<div><div class="ph"><h1>My account</h1></div><${A.Account}/></div>`;
     default: return html`<div class="empty">Page not found</div>`; } })();
   return html`<div class=${'shell admin' + (menu ? ' menu-open' : '')}>

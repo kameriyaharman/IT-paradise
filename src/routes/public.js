@@ -33,7 +33,7 @@ r.post('/enquiry', h(async (req, res) => {
   const { lead, duplicate } = await captureLead({
     name: d.name, phone: d.mobile || d.phone, email: d.email, company: d.company, city: d.city,
     need: parts.join(' · ').slice(0, 1000), quantity: d.quantity, product_id: product && product.id,
-    source: 'website', source_detail: d.form || 'Website enquiry', category: d.category,
+    source: 'website', source_detail: d.form || 'Website enquiry', category: d.category, utm: d.utm, page_url: d.page_url, referrer: d.referrer,
   });
   res.json({ ok: true, ref: `ENQ-${lead.id}`, duplicate });
 }));
@@ -78,7 +78,7 @@ r.post('/quote-request', h(async (req, res) => {
   const cat = await one('SELECT c.slug FROM categories c WHERE c.id=$1', [lines[0].p.category_id]);
   const need = lines.map(l => `${l.qty} × ${l.p.name}`).join(', ') + (d.install ? ' · with installation' : '') + (d.message ? ' · ' + d.message : '');
   const { lead } = await captureLead({ name: d.name, phone: d.mobile, email: d.email, company: d.company, city: d.city, need: need.slice(0, 1000),
-    quantity: String(lines.reduce((a, l) => a + l.qty, 0)), source: 'website', source_detail: `Quote list (${lines.length} products)`, category: cat && cat.slug, value: Math.round(est * 1.18) });
+    quantity: String(lines.reduce((a, l) => a + l.qty, 0)), source: 'website', source_detail: `Quote list (${lines.length} products)`, utm: d.utm, page_url: d.page_url, referrer: d.referrer, category: cat && cat.slug, value: Math.round(est * 1.18) });
   // Draft quotation ready for the salesperson to review & send
   const W = require('../workflows');
   const ownerUser = lead.owner_id ? await one('SELECT id,name,role FROM users WHERE id=$1', [lead.owner_id]) : await one(`SELECT id,name,role FROM users WHERE role='owner' AND active ORDER BY id LIMIT 1`);
@@ -90,6 +90,12 @@ r.post('/quote-request', h(async (req, res) => {
     if (lead.owner_id) await notifyUser(lead.owner_id, `Website quote list: ${lead.name}`, `${lines.length} products · draft ${qt.number} ready to review & send`, `/crm#/quotations/${qt.id}`);
   }
   res.json({ ok: true, ref: `ENQ-${lead.id}`, items: lines.length });
+}));
+
+r.post('/click', express.json({ type: '*/*' }), h(async (req, res) => {
+  const b = req.body || {};
+  await q('INSERT INTO click_events(kind,page,product_id,utm) VALUES($1,$2,$3,$4)', [String(b.kind || '').slice(0, 20), String(b.page || '').slice(0, 300), +b.product_id || null, b.utm || {}]);
+  res.status(204).end();
 }));
 
 module.exports = r;

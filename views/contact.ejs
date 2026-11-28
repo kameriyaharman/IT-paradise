@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+<section class="page-hero"><div class="wrap">
+  <nav class="crumbs"><a href="/">Home</a> <%- icon('right', 12) %> <span>Contact Us</span></nav>
+  <div class="eyebrow">CONTACT US</div>
+  <h1 class="h1">Let’s Talk</h1>
+  <p class="lead">Sales, service, AMC or a site visit — reach us the way you like. We reply on WhatsApp within 30 minutes.</p>
+</div></section>
+<div class="wrap">
+  <div class="ccards">
+    <% const cc = [['Call Sales', s.phone_sales, s.phone_sales ? 'tel:' + s.phone_sales : null, 'phone', 'Mon–Sat, business hours'], ['WhatsApp', s.phone_whatsapp || s.phone_sales || 'Chat with us', 'https://wa.me/' + waNum, 'wa', 'Quick quotes & queries'], ['Service Desk', s.phone_service || s.phone_sales, (s.phone_service || s.phone_sales) ? 'tel:' + (s.phone_service || s.phone_sales) : null, 'headset', 'Repairs, complaints, AMC'], ['Email', s.email, s.email ? 'mailto:' + s.email : null, 'mail', 'Quotations & documents']]; %>
+    <% cc.forEach(([l, v, href, ic, sub]) => { if (!v) return; %><a class="ccard card" <%- href ? 'href="' + href + '"' + (href.startsWith('http') ? ' target="_blank" rel="noopener"' : '') : '' %>><span class="cic"><%- icon(ic, 22) %></span><small><%= l %></small><b><%= v %></b><span class="muted"><%= sub %></span></a><% }) %>
+  </div>
+  <div class="contact2">
+    <form class="card qform" data-api="/api/public/enquiry"><h3>Send us a message</h3>
+      <input type="hidden" name="form" value="Contact page"><input type="text" name="website" class="hp" tabindex="-1" autocomplete="off">
+      <div class="g2"><label>Name *<input name="name" required></label><label>Mobile *<input name="mobile" required inputmode="tel"></label></div>
+      <div class="g2"><label>Company<input name="company"></label><label>City<input name="city" placeholder="Bhilwara"></label></div>
+      <label>Email<input name="email" type="email"></label>
+      <label>How can we help?<input name="message" placeholder="CCTV for office, laptop repair, AMC…"></label>
+      <button class="btn btn-primary btn-block"><%- icon('arrow', 16) %> Contact Our Team</button><p class="merr" hidden></p>
+    </form>
+    <div class="col">
+      <div class="card visit"><h3>Visit Our Showroom</h3>
+        <div class="crow"><span class="cic"><%- icon('pin', 18) %></span><div><small>Address</small><b><%= s.address || s.city %></b></div></div>
+        <div class="crow"><span class="cic"><%- icon('clock', 18) %></span><div><small>Timings</small><b><%= s.timings %></b></div></div>
+        <iframe class="map" title="Map" loading="lazy" src="https://www.google.com/maps?q=<%= encodeURIComponent(s.map_query || 'IT Paradise Bhilwara') %>&output=embed"></iframe>
+        <a class="btn btn-outline btn-block" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=<%= encodeURIComponent(s.map_query || 'IT Paradise Bhilwara') %>"><%- icon('pin', 16) %> Get Directions</a>
+      </div>
+      <div class="card svc-box"><h3>Need a Repair or Service?</h3><p class="muted">Raise a request or track your existing ticket.</p><div class="row-btns"><a href="#" class="btn btn-navy" data-open="service"><%- icon('tool', 16) %> Request a Service</a><a href="/track" class="btn btn-outline"><%- icon('clock', 16) %> Track Ticket</a></div></div>
+    </div>
+  </div>
+</div>
+<%- include('partials/footer') %>

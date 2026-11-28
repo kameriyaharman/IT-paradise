@@ -62,6 +62,8 @@ async function saveQuotation(data, user) {
         [number, data.lead_id || null, customerId, user.id, data.template, data.validity_days || 7, data.payment_terms || '50% advance', data.warranty || '1 year', data.notes,
           t.subtotal, t.discount, t.gst, t.total, t.margin, needsApproval ? 'pending_approval' : 'draft', crypto.randomBytes(9).toString('hex')]);
     }
+    const sd = await getSettings();
+    await c.q('UPDATE quotations SET terms=$2, delivery_terms=$3 WHERE id=$1', [qt.id, data.terms != null ? data.terms : (qt.terms || sd.quote_terms || null), data.delivery_terms != null ? data.delivery_terms : (qt.delivery_terms || sd.delivery_terms || null)]);
     for (const i of items)
       await c.q('INSERT INTO quotation_items(quotation_id,product_id,description,qty,rate,buy_rate,gst_rate,amount) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
         [qt.id, i.product_id || null, i.description, +i.qty || 1, +i.rate || 0, +i.buy_rate || 0, i.gst_rate == null ? 18 : +i.gst_rate, i.amount]);
@@ -243,6 +245,7 @@ async function completeJob(jobId, data, user) {
   if (s.require_otp !== '0' && job.otp && String(data.otp || '') !== String(job.otp) && !data.signature_id)
     throw Object.assign(new Error('Invalid customer OTP'), { status: 400 });
   await q(`UPDATE jobs SET status='completed', completed_at=now(), otp_verified=$2, signature_id=coalesce($3,signature_id) WHERE id=$1`, [jobId, String(data.otp || '') === String(job.otp), data.signature_id || null]);
+  await pushHistory(jobId, 'completed', user, data.otp ? 'Customer OTP verified' : 'Customer signature');
   if (+data.collect > 0) {
     await recordPayment({ order_id: job.order_id, customer_id: job.customer_id, amount: data.collect, mode: data.mode || 'Cash', kind: 'collection' }, user);
     await q('UPDATE jobs SET collected=collected+$2 WHERE id=$1', [jobId, +data.collect]);
@@ -284,3 +287,44 @@ async function stockIn({ supplier_id, po_id, bill_no, bill_date, items, paid }, 
 }
 
 module.exports = { computeTotals, saveQuotation, sendQuotation, convertToOrder, recordPayment, deliverOrder, createInstallJob, linkSerial, completeJob, stockIn, payLink, isOn, bump, inr, baseUrl };
+
+// ===== v2: service desk — carry-in repairs, status history, SLA, parts used =====
+const SLA_HOURS = { urgent: 4, high: 8, normal: 24, low: 72 };
+const STATUS_LABEL = { open: 'Ticket created', assigned: 'Technician assigned', on_the_way: 'Technician on the way', in_progress: 'Work in progress', completed: 'Completed', closed: 'Closed', cancelled: 'Cancelled',
+  received: 'Device received', diagnosing: 'Diagnosis in progress', awaiting_approval: 'Waiting for your approval', repairing: 'Repair in progress', ready: 'Ready for pickup', delivered: 'Delivered' };
+async function pushHistory(jobId, status, user, note) {
+  await q(`UPDATE jobs SET history = coalesce(history,'[]'::jsonb) || $2::jsonb WHERE id=$1`, [jobId, JSON.stringify([{ s: status, at: new Date().toISOString(), by: user ? user.name : null, note: note || null }])]);
+}
+async function notifyStatus(job, status) {
+  const c = job.customer_id ? await one('SELECT name, phone FROM customers WHERE id=$1', [job.customer_id]) : null;
+  const phone = (c && c.phone) || job.phone; if (!phone) return;
+  const s = await getSettings(); const link = `${await baseUrl()}/track?ticket=${encodeURIComponent(job.number)}`;
+  const msg = {
+    received: `🙏 ${c ? c.name : ''} ji, aapka device ${job.number} hamare service centre par receive ho gaya hai. Status track karein: ${link}`,
+    awaiting_approval: `${c ? c.name : ''} ji, ticket ${job.number} ki repair estimate ${inr(job.estimate)} hai. Approve karne ke liye "YES" reply karein. Details: ${link}`,
+    ready: `✅ ${c ? c.name : ''} ji, aapka device (${job.number}) repair ho gaya hai aur pickup ke liye ready hai. — ${s.company_name || 'IT Paradise'}`,
+    delivered: `🙏 ${c ? c.name : ''} ji, ${job.number} deliver ho gaya. Dhanyavaad!`,
+  }[status];
+  if (msg) sendWhatsApp(phone, { text: msg }).catch(() => {});
+}
+async function setJobStatus(jobId, status, user, note) {
+  const job = await one('SELECT * FROM jobs WHERE id=$1', [jobId]);
+  if (!job) throw new Error('Job not found');
+  await q(`UPDATE jobs SET status=$2, completed_at=CASE WHEN $2 IN ('completed','delivered','closed') THEN coalesce(completed_at, now()) ELSE completed_at END WHERE id=$1`, [jobId, status]);
+  await pushHistory(jobId, status, user, note);
+  if (job.kind === 'carry_in') await notifyStatus({ ...job, status }, status);
+  return one('SELECT * FROM jobs WHERE id=$1', [jobId]);
+}
+async function addPart(jobId, d, user) {
+  let desc = d.description, rate = +d.rate || 0;
+  if (d.product_id) {
+    const p = await one('SELECT name, price FROM products WHERE id=$1', [d.product_id]);
+    if (p) { desc = desc || p.name; if (!d.rate && d.rate !== 0) rate = +p.price; }
+    await q('UPDATE products SET stock=stock-$2 WHERE id=$1', [d.product_id, +d.qty || 1]);
+    const j = await one('SELECT number FROM jobs WHERE id=$1', [jobId]);
+    await q(`INSERT INTO stock_moves(product_id,qty,kind,ref,user_id,reason) VALUES($1,$2,'out',$3,$4,'service part')`, [d.product_id, -(+d.qty || 1), j.number, user && user.id]);
+  }
+  return one('INSERT INTO job_parts(job_id,product_id,description,qty,rate,serial,chargeable,user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+    [jobId, d.product_id || null, desc, +d.qty || 1, rate, d.serial || null, d.chargeable !== false, user && user.id]);
+}
+module.exports.SLA_HOURS = SLA_HOURS; module.exports.STATUS_LABEL = STATUS_LABEL; module.exports.pushHistory = pushHistory; module.exports.setJobStatus = setJobStatus; module.exports.addPart = addPart;

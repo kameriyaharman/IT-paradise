@@ -1,11 +1,33 @@
 <%- include('partials/header') %>
-<% const steps = ['open','assigned','on_the_way','in_progress','completed']; const labels = {open:'Ticket created',assigned:'Technician assigned',on_the_way:'On the way',in_progress:'Work in progress',completed:'Completed',closed:'Completed',cancelled:'Cancelled'}; const cur = steps.indexOf(job.status === 'closed' ? 'completed' : job.status); %>
+<%
+const carry = job && job.kind === 'carry_in';
+const steps = carry ? ['received','diagnosing','awaiting_approval','repairing','ready','delivered'] : ['open','assigned','on_the_way','in_progress','completed'];
+const labels = {open:'Ticket Created',assigned:'Technician Assigned',on_the_way:'Technician On The Way',in_progress:'Work In Progress',completed:'Completed',closed:'Completed',cancelled:'Cancelled',received:'Device Received',diagnosing:'Diagnosis',awaiting_approval:'Waiting For Your Approval',repairing:'Repair In Progress',ready:'Ready For Pickup',delivered:'Delivered'};
+const st = job ? (job.status === 'closed' ? 'completed' : job.status) : null; const cur = job ? steps.indexOf(st) : -1;
+const hist = job ? (job.history || []) : []; const when = (k) => { const h = hist.filter(x => x.s === k).pop(); return h ? new Date(h.at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''; };
+const dev = (job && job.device) || {};
+%>
 <div class="wrap sec-sm narrow">
-  <div class="eyebrow"><%= job.kind === 'installation' ? 'INSTALLATION' : 'SERVICE' %> · <%= job.number %></div>
-  <h1 class="h2"><%= job.title || job.issue %></h1>
-  <% if (job.issue) { %><p class="muted"><%= job.issue %></p><% } %>
-  <ol class="track"><% steps.forEach((st, i) => { %><li class="<%= i <= cur ? 'done' : '' %>"><span></span><%= labels[st] %></li><% }) %></ol>
-  <% if (job.tech) { %><div class="card crow"><span class="cic"><%- icon('tool', 18) %></span><div><small>Technician</small><b><%= job.tech %></b></div></div><% } %>
-  <p class="mt"><a class="btn btn-wa" href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Status of ' + job.number + '?') %>" target="_blank"><%- icon('wa', 16) %> Ask on WhatsApp</a></p>
+  <nav class="crumbs"><a href="/">Home</a> <%- icon('right', 12) %> <a href="/support">Support</a> <%- icon('right', 12) %> <span>Track Ticket</span></nav>
+  <div class="eyebrow">SERVICE &amp; REPAIR STATUS</div>
+  <h1 class="h1">Track Your Ticket</h1>
+  <form class="card track-form" method="get" action="/track">
+    <label>Ticket number<input name="ticket" required placeholder="e.g. ITP-T-2245" value="<%= query.ticket || (job ? job.number : '') %>" style="text-transform:uppercase"></label>
+    <label>Registered mobile<input name="mobile" inputmode="tel" placeholder="10-digit mobile" value="<%= query.mobile || '' %>"></label>
+    <button class="btn btn-primary"><%- icon('search', 16) %> Track</button>
+  </form>
+  <% if (err) { %><p class="merr mt"><%= err %></p><% } %>
+  <% if (job) { %>
+  <div class="card track-card">
+    <div class="tk-head"><div><small><%= carry ? 'Carry-in repair' : job.kind === 'installation' ? 'Installation' : 'On-site service' %></small><h2><%= job.number %></h2></div><span class="tk-badge s-<%= st %>"><%= labels[st] || st %></span></div>
+    <% if (carry) { %><div class="tk-dev"><div><small>Device</small><b><%= [dev.type, dev.brand, dev.model].filter(Boolean).join(' · ') || job.title %></b></div><% if (dev.serial) { %><div><small>Serial</small><b><%= dev.serial %></b></div><% } %><% if (+job.estimate) { %><div><small>Estimate</small><b>₹<%= inr(job.estimate) %></b></div><% } %><% if (dev.expected) { %><div><small>Expected by</small><b><%= new Date(dev.expected).toLocaleDateString('en-IN') %></b></div><% } %></div><% } %>
+    <% if (job.issue) { %><p class="muted">Problem: <%= job.issue %></p><% } %>
+    <ol class="track"><% steps.forEach((x, i) => { %><li class="<%= i <= cur ? 'done' : '' %> <%= i === cur ? 'now' : '' %>"><span></span><div><b><%= labels[x] %></b><small><%= when(x) %></small></div></li><% }) %></ol>
+    <% if (job.tech) { %><div class="crow"><span class="cic"><%- icon('tool', 18) %></span><div><small>Technician</small><b><%= job.tech %></b></div></div><% } %>
+    <% if (st === 'awaiting_approval') { %><p class="tk-note">Our team has shared the repair estimate. Please reply on WhatsApp to approve.</p><% } %>
+    <% if (st === 'ready') { %><p class="tk-note ok">Your device is ready. Please collect it from our service centre with this ticket number.</p><% } %>
+  </div>
+  <p class="mt"><a class="btn btn-wa" href="https://wa.me/<%= waNum %>?text=<%= encodeURIComponent('Status of ticket ' + job.number + '?') %>" target="_blank"><%- icon('wa', 16) %> Ask on WhatsApp</a></p>
+  <% } %>
 </div>
 <%- include('partials/footer') %>

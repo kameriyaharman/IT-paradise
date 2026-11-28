@@ -1,19 +1,19 @@
 </main>
 <footer class="ftr"><div class="wrap ftr-grid">
   <div class="fcol-brand">
-    <a href="/" class="logo logo-light"><img src="/static/img/logo.svg" alt="" width="40" height="40"><span><b><%= s.company_name || 'IT PARADISE' %></b><small>TECHNOLOGY. INTEGRATED.</small></span></a>
+    <a href="/" class="logo logo-light"><img src="<%= logoUrl %>" alt="" height="40" class="<%= logoText ? '' : 'logo-only' %>"><% if (logoText) { %><span><b><%= s.company_name || 'IT PARADISE' %></b><small><%= (s.logo_tagline || 'TECHNOLOGY. INTEGRATED.') %></small></span><% } %></a>
     <p>One partner for computing, security, networking, power and display — supplied, integrated and supported since 2006.</p>
   </div>
   <div><h4>Products</h4><% categories.forEach(c => { %><a href="/products/<%= c.slug %>"><%= c.name %></a><% }) %></div>
   <div><h4>Solutions</h4><% sectors.forEach(x => { %><a href="/solutions/<%= x.slug %>"><%= x.name %></a><% }) %></div>
-  <div><h4>Support</h4><a href="#" data-open="enquiry" data-form="Request a quotation (footer)">Request a quotation</a><a href="#" data-open="service">Request a service</a><a href="/page/amc-plans">AMC plans</a><a href="/page/warranty">Warranty &amp; returns</a><a href="/gallery">Photo gallery</a></div>
-  <div><h4>Contact</h4>
+  <div><h4>Support</h4><a href="#" data-open="enquiry" data-form="Request a quotation (footer)">Request a Quotation</a><a href="#" data-open="service">Request a Service</a><a href="/track">Track Ticket</a><a href="/page/amc-plans">AMC Plans</a><a href="/page/warranty">Warranty &amp; Returns</a><a href="/gallery">Photo Gallery</a></div>
+  <div><h4>Contact</h4><a href="/contact">Contact Us</a><a href="/about">About Us</a>
     <% if (s.phone_sales) { %><a href="tel:<%= s.phone_sales %>"><%= s.phone_sales %></a><% } %>
     <% if (s.email) { %><a href="mailto:<%= s.email %>"><%= s.email %></a><% } %>
     <span><%= s.city || 'Bhilwara, Rajasthan' %></span><span><%= s.timings || 'Mon–Sat · 10 AM – 8 PM' %></span>
   </div>
 </div>
-<div class="wrap ftr-bot"><span>© <%= new Date().getFullYear() %> IT Paradise · itparadise.in</span><span><a href="/page/privacy">Privacy</a> · <a href="/page/terms">Terms</a> · <a href="#" data-cookie>Cookie settings</a></span></div>
+<div class="wrap ftr-bot"><span>© <%= new Date().getFullYear() %> IT Paradise · itparadise.in</span><span><a href="/page/privacy">Privacy</a> · <a href="/page/terms">Terms</a> · <a href="#" data-cookie>Cookie Settings</a></span></div>
 </footer>
 
 <a class="fab-wa" href="https://wa.me/<%= waNum %>" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"><%- icon('wa', 28) %></a>
@@ -56,5 +56,5 @@
   </form>
 </div>
 <div class="cookie" hidden><span>We use essential cookies only, plus analytics if you allow.</span><button class="btn btn-sm btn-primary" data-cookie-ok>OK</button></div>
-<script src="/static/js/site.js?v=6" defer></script>
+<script src="/static/js/site.js?v=7" defer></script>
 </body></html>

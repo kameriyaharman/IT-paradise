@@ -218,3 +218,37 @@ CREATE TABLE IF NOT EXISTS automations (key TEXT PRIMARY KEY, name TEXT, descrip
 CREATE TABLE IF NOT EXISTS audit_log (id SERIAL PRIMARY KEY, user_id INT, action TEXT, entity TEXT, entity_id TEXT, detail JSONB, ip TEXT, created_at TIMESTAMPTZ DEFAULT now());
 CREATE TABLE IF NOT EXISTS outbox (id SERIAL PRIMARY KEY, channel TEXT, to_addr TEXT, template TEXT, body TEXT, status TEXT DEFAULT 'queued', error TEXT, created_at TIMESTAMPTZ DEFAULT now());
 CREATE TABLE IF NOT EXISTS counters (name TEXT PRIMARY KEY, value INT DEFAULT 0);
+
+-- ===== v2 (client feedback) =====
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS utm JSONB DEFAULT '{}';
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS page_url TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS referrer TEXT;
+ALTER TABLE quotations ADD COLUMN IF NOT EXISTS terms TEXT;
+ALTER TABLE quotations ADD COLUMN IF NOT EXISTS delivery_terms TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'normal';
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS sla_due TIMESTAMPTZ;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS device JSONB DEFAULT '{}';
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS estimate NUMERIC DEFAULT 0;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS parent_job_id INT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS history JSONB DEFAULT '[]';
+ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_kind_check;
+ALTER TABLE jobs ADD CONSTRAINT jobs_kind_check CHECK (kind IN ('installation','service','preventive','carry_in'));
+ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_status_check;
+ALTER TABLE jobs ADD CONSTRAINT jobs_status_check CHECK (status IN ('open','assigned','on_the_way','in_progress','completed','closed','cancelled','received','diagnosing','awaiting_approval','repairing','ready','delivered'));
+CREATE TABLE IF NOT EXISTS job_parts (
+  id SERIAL PRIMARY KEY, job_id INT REFERENCES jobs(id) ON DELETE CASCADE, product_id INT REFERENCES products(id),
+  description TEXT, qty NUMERIC DEFAULT 1, rate NUMERIC DEFAULT 0, serial TEXT, chargeable BOOLEAN DEFAULT TRUE,
+  user_id INT REFERENCES users(id), created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS locations (
+  id BIGSERIAL PRIMARY KEY, user_id INT REFERENCES users(id) ON DELETE CASCADE, lat DOUBLE PRECISION, lng DOUBLE PRECISION,
+  accuracy NUMERIC, kind TEXT DEFAULT 'ping', note TEXT, at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS loc_user_at ON locations(user_id, at DESC);
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS out_location TEXT;
+CREATE TABLE IF NOT EXISTS click_events (id BIGSERIAL PRIMARY KEY, kind TEXT, page TEXT, product_id INT, utm JSONB DEFAULT '{}', created_at TIMESTAMPTZ DEFAULT now());
+CREATE TABLE IF NOT EXISTS customer_sites (id SERIAL PRIMARY KEY, customer_id INT REFERENCES customers(id) ON DELETE CASCADE, name TEXT, address TEXT, city TEXT, contact TEXT, phone TEXT, created_at TIMESTAMPTZ DEFAULT now());
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS site_id INT;
+ALTER TABLE stock_moves ADD COLUMN IF NOT EXISTS reason TEXT;
+ALTER TABLE followups ADD COLUMN IF NOT EXISTS escalated BOOLEAN DEFAULT FALSE;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS escalated BOOLEAN DEFAULT FALSE;
